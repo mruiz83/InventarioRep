@@ -1,0 +1,73 @@
+<%- include('partials/header') %>
+<%- include('partials/sidebar') %>
+
+<div class="main-content">
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h4>Organigrama Institucional - ENACAL</h4>
+            </div>
+            <%- include('partials/user-info') %>
+        </div>
+        
+        <div class="card shadow-sm border-0 mb-4" style="border-radius: 15px;">
+            <div class="card-body p-4">
+                <form action="/configuracion/areas/guardar" method="POST" class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Nombre de la Dependencia</label>
+                        <input type="text" name="nombre_dependencia" class="form-control" placeholder="Ej: Delegación Granada" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">Nivel</label>
+                        <select name="nivel" class="form-select" required>
+                            <option value="Presidencia">Presidencia</option>
+                            <option value="Direccion">Dirección</option>
+                            <option value="Gerencia">Gerencia</option>
+                            <option value="Departamento">Departamento</option>
+                            <option value="Delegacion">Delegación</option>
+                            <option value="Filial">Filial</option>
+                            <option value="Planta_Pozo">Planta / Pozo</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">Depende de (Padre)</label>
+                        <select name="id_padre" class="form-select">
+                            <option value="">-- Es Raíz (Sin Padre) --</option>
+                            <% areas.forEach(area => { %>
+                                <option value="<%= area.id_dependencia %>"><%= area.nombre_dependencia %> (<%= area.nivel %>)</option>
+                            <% }) %>
+                        </select>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary w-100 rounded-pill">Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <table class="table table-hover bg-white shadow-sm rounded">
+            <thead class="table-light">
+                <tr>
+                    <th>Nombre</th>
+                    <th>Nivel</th>
+                    <th>Dependencia Superior</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% areas.forEach(area => { %>
+                    <tr>
+                        <td class="fw-bold"><%= area.nombre_dependencia %></td>
+                        <td><span class="badge bg-info text-dark"><%= area.nivel %></span></td>
+                        <td class="text-muted">
+                           <% if (area.nombre_padre) { %>
+                                <i class="fas fa-level-up-alt fa-rotate-90 me-1"></i> <%= area.nombre_padre %>
+                           <% } else { %>
+                                <span class="badge bg-secondary opacity-50">Sede Principal / Raíz</span>
+                           <% } %>
+                        </td>
+                    </tr>
+                <% }) %>
+            </tbody>
+        </table>
+    </div>
+</div><%- include('partials/footer') %>

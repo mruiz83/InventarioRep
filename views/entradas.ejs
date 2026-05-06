@@ -1,0 +1,92 @@
+<%- include('partials/header') %>
+<%- include('partials/sidebar') %>
+
+<div class="main-content">
+    <header class="top-nav d-flex justify-content-between align-items-center mb-4">
+        <h4 class="m-0 text-secondary fw-bold">📥 Registro de Ingreso (Facturación)</h4>
+        <div class="user-profile bg-white p-2 rounded-pill shadow-sm">
+            <%- include('partials/user-info') %>
+        </div>
+    </header>
+
+    <main class="container-fluid">
+        <div class="glass-card p-4 shadow-sm border-0" style="background: white; border-radius: 15px;">
+            <form action="/entradas/guardar" method="POST">
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Fecha de Recepción</label>
+                        <input type="date" name="fecha_recepcion" class="form-control" value="<%= new Date().toISOString().split('T')[0] %>" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Responsable</label>
+                        <input type="text" class="form-control bg-light" value="<%= nombre %>" readonly>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-bordered align-middle" id="tabla-entradas">
+                        <thead class="table-primary text-white">
+                            <tr>
+                                <th style="width: 30%;">Repuesto / Item</th>
+                                <th style="width: 10%;">Cant.</th>
+                                <th style="width: 15%;">N° Factura</th>
+                                <th style="width: 15%;">Fecha Fact.</th>
+                                <th style="width: 25%;">Proveedor</th>
+                                <th style="width: 5%;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="detalle-tbody">
+                            <tr>
+                                <td>
+                                    <select name="id_repuesto[]" class="form-select" required>
+                                        <option value="">Seleccione...</option>
+                                        <% repuestos.forEach(r => { %>
+                                            <option value="<%= r.id_repuestos %>"><%= r.descripcion %></option>
+                                        <% }) %>
+                                    </select>
+                                </td>
+                                <td><input type="number" name="cantidad[]" class="form-control" min="1" value="1" required></td>
+                                <td><input type="text" name="factura[]" class="form-control" placeholder="000-000"></td>
+                                <td><input type="date" name="fecha_factura[]" class="form-control"></td>
+                                <td><input type="text" name="proveedor[]" class="form-control" placeholder="Nombre Proveedor"></td>
+                                <td class="text-center"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <button type="button" class="btn btn-outline-primary btn-sm mt-2 mb-4 rounded-pill" onclick="agregarFila()">
+                    <i class="fa-solid fa-plus me-1"></i> Agregar otra línea
+                </button>
+
+                <div class="d-flex justify-content-end gap-2 border-top pt-3">
+                    <a href="/repuestos" class="btn btn-light rounded-pill px-4">Cancelar</a>
+                    <button type="submit" class="btn btn-success rounded-pill px-4 shadow">
+                        <i class="fa-solid fa-save me-1"></i> Guardar en Inventario
+                    </button>
+                </div>
+            </form>
+        </div>
+    </main>
+</div>
+
+<script>
+    function agregarFila() {
+        const tbody = document.getElementById("detalle-tbody");
+        const filaOriginal = tbody.querySelector('tr');
+        const nuevaFila = filaOriginal.cloneNode(true);
+        
+        // Limpiar inputs de la nueva fila
+        nuevaFila.querySelectorAll('input').forEach(i => i.value = '');
+        nuevaFila.querySelectorAll('select').forEach(s => s.selectedIndex = 0);
+        nuevaFila.querySelector('input[name="cantidad[]"]').value = 1;
+
+        // Acá se añade el botón de eliminar
+        const tdAccion = nuevaFila.querySelector('td:last-child');
+        tdAccion.innerHTML = '<button type="button" class="btn btn-sm btn-outline-danger border-0" onclick="this.closest(\'tr\').remove()">❌</button>';
+        
+        tbody.appendChild(nuevaFila);
+    }
+</script>
+
+<%- include('partials/footer') %>

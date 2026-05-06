@@ -1,0 +1,288 @@
+<%- include('partials/header') %>
+<%- include('partials/sidebar') %>
+
+<div class="main-content">
+    <header class="top-nav d-flex justify-content-between align-items-center mb-4">
+        <h4 class="m-0 text-secondary fw-bold">📦 Registro Maestro de Equipos</h4>
+        <p class="text-muted small">Generación de códigos informáticos.</p>
+        <div class="user-profile bg-white p-2 rounded-pill shadow-sm">
+            <%- include('partials/user-info') %>
+        </div>
+    </header>
+
+    <div class="row g-4">
+
+        <!-- Para el buscador universal -->
+
+    <div class="mb-3">
+        <div class="input-group">
+            <span class="input-group-text bg-white border-end-0 rounded-pill-start">
+                <i class="fa-solid fa-magnifying-glass text-muted"></i>
+            </span>
+            <input type="text" id="buscadorUniversal" class="form-control border-start-0 rounded-pill-end shadow-sm" 
+                    placeholder="Buscar por serie, código, responsable, oficina o estado...">
+        </div>
+    </div>
+        
+        <!-- Formulario de registro -->
+        <div class="col-xl-4 col-lg-5">
+            <div class="modern-card shadow-sm bg-white p-4" style="border-radius: 20px;">
+                <form action="/inventario/equipos/guardar" method="POST" id="formEquipo">
+                    <div class="mb-3">
+                        <label class="form-label-custom">1. Tipo de Equipo</label>
+                        <select name="id_tipo" id="id_tipo" class="form-select input-modern" required>
+                            <option value="">Seleccione tipo...</option>
+                            <% tipos.forEach(t => { %>
+                                <option value="<%= t.id_tipo %> text-uppercase"><%= t.nombre_tipo %> (<%= t.prefijo %>)</option>
+                            <% }) %>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label-custom">2. Marca</label>
+                        <select name="id_marca" id="id_marca" class="form-select input-modern" required disabled>
+                            <option value="">Primero seleccione tipo...</option>
+                            <% marcas.forEach(m => { %>
+                                <option value="<%= m.id_marca %>"><%= m.nombre_marca %></option>
+                            <% }) %>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label-custom">3. Modelo</label>
+                        <select name="id_modelo" id="id_modelo" class="form-select input-modern" required disabled>
+                            <option value="">Seleccione marca...</option>
+                        </select>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label class="form-label-custom">Código de Inventario (Activo Fijo)</label>
+                            <input type="text" name="codigo_inventario" class="form-control input-modern text-uppercase" 
+                                   placeholder="Ej: ENACAL-001" oninput="this.value = this.value.toUpperCase()">
+                        </div>
+
+                        <div class="col-md-12 mb-3">
+                            <label class="form-label-custom">Serie (S/N)</label>
+                            <input type="text" name="serie" class="form-control input-modern text-uppercase" 
+                                   placeholder="S/N" required oninput="this.value = this.value.toUpperCase()">
+                        </div>
+
+                        <div class="col-md-12 mb-3">
+                            <label class="form-label-custom">Asignar a Responsable</label>
+                            <select name="id_colaborador" class="form-select input-modern" required>
+                                <option value="">Seleccione al responsable...</option>
+                                <% colaboradores.forEach(c => { %>
+                                    <option value="<%= c.id_colaborador %>">
+                                        <%= c.nombre_completo %> — [<%= c.nombre_dependencia %>]
+                                    </option>
+                                <% }) %>
+                            </select>
+                            <small class="text-muted">Se asignará automáticamente la oficina del colaborador.</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label-custom">Estado Inicial</label>
+                            <select name="estado" class="form-select input-modern" required>
+                                <option value="Operativo" selected>Operativo</option>
+                                <option value="Reserva">Reserva</option>
+                                <option value="En Reparacion">En Reparación</option>
+                                <option value="De Baja">De Baja</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 rounded-pill py-3 fw-bold shadow-sm">
+                        <i class="fa-solid fa-save me-2"></i>Registrar Equipo
+                    </button>
+                </form>
+            </div>
+        </div>
+
+
+        <!-- Tabla de los equipos registrados -->
+        <div class="col-xl-8 col-lg-7">
+            <div class="modern-card bg-white h-100 shadow-sm" style="border-radius: 20px; overflow: hidden;">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" id="tablaEquipos">
+                        <thead class="bg-light">
+                            <tr class="small text-uppercase">
+                                <th class="ps-4">Cód. Inf.</th>
+                                <th>Equipo / Marca-Modelo</th>
+                                <th>Responsable</th>
+                                <th>Ubicación</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% equipos.forEach(eq => { %>
+                                <tr>
+                                    <td class="ps-4 fw-bold text-primary"><%= eq.codigo_informatico %></td>
+                                    <td>
+                                        <div class="fw-bold text-dark"><%= eq.tipo_equipo %></div>
+                                        <div class="text-muted small"><%= eq.marca_modelo %></div>
+                                    </td>
+                                    <td>
+                                        <div class="small fw-bold"><%= eq.nombre_colaborador || 'SIN ASIGNAR' %></div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-light text-dark border small">
+                                            <i class="fa-solid fa-location-dot me-1 text-danger"></i>
+                                            <%= eq.nombre_dependencia || 'N/A' %>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge rounded-pill <%= eq.estado === 'Operativo' ? 'bg-success' : 'bg-warning text-dark' %>">
+                                            <%= eq.estado %>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <!-- BOTÓN DE EDITAR -->
+                                        <button class="btn btn-sm btn-outline-primary rounded-pill shadow-sm btn-editar" 
+                                                data-equipo='<%= JSON.stringify(eq) %>'>
+                                            <i class="fa-solid fa-pen-to-square"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            <% }) %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL DE EDICIÓN (Ubicación) -->
+<div class="modal fade" id="modalEditar" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 25px; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+            <div class="modal-header border-0 pt-4 px-4">
+                <h5 class="modal-title fw-bold text-secondary">
+                    <i class="fa-solid fa-pen-to-square me-2 text-primary"></i>
+                    Editar Equipo: <span id="edit_codigo_inf" class="text-primary"></span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="/inventario/equipos/actualizar" method="POST">
+                <div class="modal-body px-4">
+                    <input type="hidden" name="id_equipo" id="edit_id_equipo">
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted">SERIE (S/N)</label>
+                        <input type="text" name="serie" id="edit_serie" class="form-control input-modern text-uppercase" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted">ESTADO DEL ACTIVO</label>
+                        <select name="estado" id="edit_estado" class="form-select input-modern">
+                            <option value="Operativo">Operativo</option>
+                            <option value="Reserva">Reserva</option>
+                            <option value="En Reparacion">En Reparación</option>
+                            <option value="De Baja">De Baja</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted">REASIGNAR RESPONSABLE</label>
+                        <select name="id_colaborador" id="edit_id_colaborador" class="form-select input-modern" required>
+                            <% colaboradores.forEach(c => { %>
+                                <option value="<%= c.id_colaborador %>"><%= c.nombre_completo %></option>
+                            <% }) %>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pb-4 px-4">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold">Actualizar Datos</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Para el Botón de edición
+    document.addEventListener('click', function (event) {
+        
+        const btn = event.target.closest('.btn-editar');
+        
+        if (btn) {
+            try {
+                const eq = JSON.parse(btn.getAttribute('data-equipo'));
+
+                document.getElementById('edit_id_equipo').value = eq.id_equipo;
+                document.getElementById('edit_codigo_inf').innerText = eq.codigo_informatico;
+                document.getElementById('edit_serie').value = eq.serie;
+                document.getElementById('edit_estado').value = eq.estado;
+                document.getElementById('edit_id_colaborador').value = eq.id_colaborador;
+
+                const modalElement = document.getElementById('modalEditar');
+                const modalEdit = new bootstrap.Modal(modalElement);
+                modalEdit.show();
+            } catch (error) {
+                console.error("Error al procesar los datos del equipo:", error);
+            }
+        }
+    });
+
+    const selectTipo = document.getElementById('id_tipo');
+    const selectMarca = document.getElementById('id_marca');
+    const selectModelo = document.getElementById('id_modelo');
+
+    selectTipo.addEventListener('change', () => {
+        if(selectTipo.value !== "") {
+            selectMarca.disabled = false;
+        } else {
+            selectMarca.disabled = true;
+            selectModelo.disabled = true;
+            selectMarca.value = "";
+            selectModelo.value = "";
+        }
+    });
+
+    selectMarca.addEventListener('change', async () => {
+        const idTipo = selectTipo.value;
+        const idMarca = selectMarca.value;
+        if (idTipo && idMarca) {
+            selectModelo.innerHTML = '<option value="">Cargando...</option>';
+            try {
+                const response = await fetch(`/api/modelos/${idTipo}/${idMarca}`);
+                const modelos = await response.json();
+                selectModelo.innerHTML = '<option value="">Seleccione modelo...</option>';
+                modelos.forEach(m => {
+                    const option = document.createElement('option');
+                    option.value = m.id_modelo;
+                    option.textContent = m.nombre_modelo;
+                    selectModelo.appendChild(option);
+                });
+                selectModelo.disabled = false;
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+    });
+
+    
+    // Código para ejecutar el buscador
+    document.getElementById('buscadorUniversal').addEventListener('keyup', function() {
+    const valor = this.value.toLowerCase();
+    const filas = document.querySelectorAll('#tablaEquipos tbody tr');
+
+    filas.forEach(fila => {
+        const textoFila = fila.innerText.toLowerCase();
+        
+        if (textoFila.includes(valor)) {
+            fila.style.display = '';
+            fila.style.animation = 'fadeIn 0.3s';
+        } else {
+            fila.style.display = 'none'; 
+        }
+    });
+});
+
+
+</script>
+
+<%- include('partials/footer') %>

@@ -1,0 +1,47 @@
+# Dependencias
+node_modules/
+package-lock.json
+
+# Variables de entorno
+.env
+.env.local
+.env.production
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# IDE
+.vscode/
+.idea/
+*.sublime-*
+
+# Base de datos local
+*.sqlite
+*.db
+
+# Archivos temporales
+tmp/
+temp/
+*.tmp
+
+# Configuración de sesiones
+sessions/
+
+# Windows
+Desktop.ini
+$RECYCLE.BIN/
+
+# macOS
+.AppleDouble
+.LSOverride
+._*
+
+# Respaldos
+*.bak
+*.backup

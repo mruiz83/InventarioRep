@@ -1,0 +1,171 @@
+<%- include('partials/header') %>
+<%- include('partials/sidebar') %>
+
+<div class="main-content">
+    <header class="top-nav d-flex justify-content-between align-items-center mb-4">
+        <div class="page-title">
+            <h4 class="m-0 text-secondary fw-bold">Panel Principal</h4>
+        </div>
+        <div class="user-profile d-flex align-items-center bg-white p-2 rounded-pill shadow-sm">
+            <%- include('partials/user-info') %>
+        </div>
+    </header>
+
+   <div class="glass-card p-4 text-center mb-4 border-0 shadow-sm" style="background: white; border-radius: 15px;">
+    <div class="row align-items-center">
+        <div class="col-md-9 text-start ps-4">
+            <h2 class="fw-bold text-primary mb-1">¡Bienvenido, <%= nombre %>!</h2>
+            <p class="text-muted mb-3">Al Sistema de Control e Inventario de Repuestos y Equipos Informáticos (InventarioRep).</p>
+            
+            <div>
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle p-2 px-3 rounded-pill" style="font-size: 0.8rem;">
+                    <i class="fa-solid fa-user-gear me-1"></i> Técnico en Soporte Técnico
+                </span>
+                <span class="badge bg-light text-secondary p-2 px-3 ms-2 rounded-pill" style="font-size: 0.8rem;">
+                    <i class="fa-solid fa-calendar-day me-1"></i> <%= new Date().toLocaleDateString() %>
+                </span>
+            </div>
+        </div>
+        <div class="col-md-3 text-end pe-4 d-none d-md-block">
+            <img src="/img/Logo_ENACAL_2.png" alt="ENACAL" class="img-fluid" style="max-height: 80px; opacity: 0.8;">
+        </div>
+    </div>
+</div>
+
+        <div class="row">
+    <!-- Gráfico de Equipos y Colaboradores -->
+    <div class="col-md-5 mb-4">
+        <div class="card border-0 shadow-sm p-3" style="border-radius: 15px; cursor: pointer;" onclick="location.href='/inventario/equipos'">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="fw-bold text-secondary m-0"><i class="fa-solid fa-chart-column me-2 text-primary"></i>Resumen de Asignaciones</h6>
+                <small class="text-primary">Ver Inventario <i class="fa-solid fa-arrow-right"></i></small>
+            </div>
+            <canvas id="chartEquipos" 
+    data-total-equipos="<%= typeof totalEquipos !== 'undefined' ? totalEquipos : 0 %>"
+    data-asignados="<%= typeof asignados !== 'undefined' ? asignados : 0 %>"
+    data-total-colab="<%= typeof totalColab !== 'undefined' ? totalColab : 0 %>"
+    data-colab-equipo="<%= typeof colabConEquipo !== 'undefined' ? colabConEquipo : 0 %>"
+    style="max-height: 200px;">
+</canvas>
+        </div>
+    </div>
+
+    <!-- Gráfico de alertas de Stock (Repuestos) -->
+    <div class="col-md-3 mb-4">
+        <div class="card border-0 shadow-sm p-3 text-center" style="border-radius: 15px; cursor: pointer; height: 100%;" onclick="location.href='/repuestos'">
+            <h6 class="fw-bold text-secondary mb-3 text-uppercase small">Alertas de Repuestos</h6>
+            <div class="mb-3">
+                <h2 class="fw-bold text-danger m-0"><%= typeof stockCero !== 'undefined' ? stockCero : 0 %></h2>
+                <small class="text-muted">Sin Existencia</small>
+            </div>
+            <div class="pt-2 border-top">
+                <h2 class="fw-bold text-warning m-0"><%= typeof stockMinimo !== 'undefined' ? stockMinimo : 0 %></h2>
+                <small class="text-muted">Stock Crítico (< 5)</small>
+            </div>
+            <div class="mt-3">
+                <span class="btn btn-sm btn-outline-secondary rounded-pill w-100">Gestionar Stock</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- para el centro de Descargas y Filtros -->
+    <div class="col-md-4 mb-4">
+        <div class="card border-0 shadow-sm p-3" style="border-radius: 15px; background: #f8f9fa;">
+            <h6 class="fw-bold text-dark mb-3"><i class="fa-solid fa-file-export me-2 text-success"></i>Reportes Rápidos</h6>
+            
+            <div class="mb-3">
+                <label class="small fw-bold text-muted">Inventario de Repuestos</label>
+                <div class="input-group input-group-sm mt-1">
+                    <select class="form-select border-0 shadow-sm" id="filtroRepuesto">
+                        <option value="todos">Todos los items</option>
+                        <option value="nuevo">Solo Nuevos</option>
+                        <option value="usado">Solo Usados</option>
+                    </select>
+                    <button class="btn btn-success" onclick="descargarExcel('repuestos')"><i class="fa-solid fa-download"></i></button>
+                </div>
+            </div>
+
+            <div>
+                <label class="small fw-bold text-muted">Inventario de Equipos</label>
+                <div class="input-group input-group-sm mt-1">
+                    <select class="form-select border-0 shadow-sm" id="filtroEquipo">
+                        <option value="todos">Todos los equipos</option>
+                        <option value="asignado">Asignados</option>
+                        <option value="disponible">Disponibles</option>
+                    </select>
+                    <button class="btn btn-success" onclick="descargarExcel('equipos')"><i class="fa-solid fa-download"></i></button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="/js/dashboard.js"></script>
+
+
+
+    <footer class="text-center mt-auto py-3 text-muted">
+        <small>© 2026 ENACAL - División de Soporte Técnico</small>
+    </footer>
+</div>
+
+
+<!-- Lógica del gráfico y funciones -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const canvas = document.getElementById('chartEquipos');
+    if (!canvas) return; // Esto es para seguridad por si el elemento no existe
+
+    const ctx = canvas.getContext('2d');
+    
+    // Se leen los datos desde los atributos data-
+    const totalEquipos = Number(canvas.dataset.totalEquipos);
+    const asignados = Number(canvas.dataset.asignados);
+    const totalColab = Number(canvas.dataset.totalColab);
+    const colabConEquipo = Number(canvas.dataset.colabEquipo);
+
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Equipos', 'Colaboradores'],
+            datasets: [
+                {
+                    label: 'Total Registrado',
+                    data: [totalEquipos, totalColab],
+                    backgroundColor: 'rgba(233, 236, 239, 0.8)', 
+                    borderRadius: 8
+                },
+                {
+                    label: 'Asignados',
+                    data: [asignados, colabConEquipo],
+                    backgroundColor: '#0d6efd',
+                    borderRadius: 8
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
+});
+
+// Para gestionar las descargas de Excel
+function descargarExcel(tipo) {
+    const filtro = tipo === 'repuestos' ? 
+        document.getElementById('filtroRepuesto').value : 
+        document.getElementById('filtroEquipo').value;
+    
+    console.log(`Generando reporte de ${tipo} con filtro: ${filtro}`);
+    
+    // Descarga de clases
+    alert(`Preparando archivo Excel de ${tipo.toUpperCase()} (${filtro})...`);
+}
+</script>
+
+
+
+<%- include('partials/footer') %>

@@ -1,0 +1,209 @@
+<%- include('partials/header') %>
+<%- include('partials/sidebar') %>
+
+<div class="main-content">
+    <header class="top-nav d-flex justify-content-between align-items-center mb-4">
+        <h4 class="m-0 text-secondary fw-bold">👥 Gestión de Colaboradores</h4>
+        <div class="user-profile bg-white p-2 rounded-pill shadow-sm">
+            <%- include('partials/user-info') %>
+        </div>
+    </header>
+
+    <main class="container-fluid">
+        <div class="card shadow-sm border-0 mb-4" style="border-radius: 15px;">
+            <div class="card-header bg-white border-0 pt-4 px-4">
+                <h5 class="fw-bold text-primary"><i class="fa-solid fa-user-plus me-2"></i>Registrar Nuevo Ingreso</h5>
+            </div>
+            <div class="card-body p-4">
+                <form action="/configuracion/colaboradores/guardar" method="POST" class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small">Nombre Completo</label>
+                        <input type="text" name="nombre_completo" class="form-control form-control-sm rounded-pill" placeholder="Ej: Juan Pérez" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small">N° Empleado / Cédula</label>
+                        <input type="text" name="numero_empleado" class="form-control form-control-sm rounded-pill" placeholder="000-000000-0000X">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small">Área / Dependencia</label>
+                        <select name="id_dependencia" class="form-select form-select-sm rounded-pill" required>
+                            <option value="">Seleccione el área...</option>
+                            <% areas.forEach(area => { %>
+                                <option value="<%= area.id_dependencia %>"><%= area.nombre_dependencia %> (<%= area.nivel %>)</option>
+                            <% }) %>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small">Cargo Institucional</label>
+                        <input type="text" name="cargo" class="form-control form-control-sm rounded-pill" placeholder="Ej: Analista de Sistemas">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small">Extensión / Teléfono</label>
+                        <input type="text" name="extension_telefonica" class="form-control form-control-sm rounded-pill" placeholder="Ext. 1234">
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary btn-sm w-100 rounded-pill shadow-sm">
+                            <i class="fa-solid fa-save me-1"></i> Guardar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0" style="border-radius: 15px;">
+            <div class="table-responsive p-3">
+                <table class="table table-hover align-middle mb-0" id="tabla-colaboradores">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4">Colaborador</th>
+                            <th>Cargo</th>
+                            <th>Dependencia</th>
+                            <th class="text-center">Estado</th>
+                            <th class="text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% if (colaboradores.length > 0) { %>
+                            <% colaboradores.forEach(col => { %>
+                                <tr>
+                                    <td class="ps-4">
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-circle me-3 bg-light d-flex align-items-center justify-content-center rounded-circle" style="width: 40px; height: 40px;">
+                                                <i class="fa-solid fa-user text-secondary"></i>
+                                            </div>
+                                            <div>
+                                                <div class="fw-bold"><%= col.nombre_completo %></div>
+                                                <small class="text-muted"><%= col.numero_empleado || 'S/N' %></small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td><%= col.cargo %></td>
+                                    <td>
+                                        <span class="badge bg-light text-dark border shadow-xs"><%= col.nombre_dependencia %></span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge rounded-pill <%= col.estado_laboral === 'Activo' ? 'bg-success' : 'bg-danger' %> px-3">
+                                            <%= col.estado_laboral %>
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="btn-group">
+                                            <button class="btn btn-sm btn-outline-secondary border-0" onclick="abrirEditar('<%= col.id_colaborador %>')">
+                                               <i class="fa-solid fa-pen"></i>
+                                            </button>
+        
+                                            <button class="btn btn-sm btn-outline-danger border-0">
+                                               <i class="fa-solid fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <% }) %>
+                        <% } else { %>
+                            <tr>
+                                <td colspan="5" class="text-center py-4 text-muted">No hay colaboradores registrados aún.</td>
+                            </tr>
+                        <% } %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <div class="modal fade" id="modalEditarColaborador" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <form action="/configuracion/colaboradores/actualizar" method="POST" class="modal-content border-0 shadow" style="border-radius: 15px;">
+            <div class="modal-header border-0 pt-4 px-4">
+                <h5 class="fw-bold text-primary"><i class="fa-solid fa-user-pen me-2"></i>Editar Información del Colaborador</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <input type="hidden" name="id_colaborador" id="edit_id">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small">Nombre Completo</label>
+                        <input type="text" name="nombre_completo" id="edit_nombre" class="form-control form-control-sm rounded-pill" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small">N° Empleado / Cédula</label>
+                        <input type="text" name="numero_empleado" id="edit_numero" class="form-control form-control-sm rounded-pill">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small">Área / Dependencia</label>
+                        <select name="id_dependencia" id="edit_dependencia" class="form-select form-select-sm rounded-pill" required>
+                            <% areas.forEach(area => { %>
+                                <option value="<%= area.id_dependencia %>"><%= area.nombre_dependencia %></option>
+                            <% }) %>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small">Estado Laboral</label>
+                        <select name="estado_laboral" id="edit_estado" class="form-select form-select-sm rounded-pill">
+                            <option value="Activo">Activo</option>
+                            <option value="Inactivo">Inactivo</option>
+                        </select>
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label fw-bold small">Cargo Institucional</label>
+                        <input type="text" name="cargo" id="edit_cargo" class="form-control form-control-sm rounded-pill">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small">Extensión / Teléfono</label>
+                        <input type="text" name="extension_telefonica" id="edit_extension" class="form-control form-control-sm rounded-pill">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0 pb-4 px-4">
+                <button type="button" class="btn btn-light btn-sm rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-primary btn-sm rounded-pill px-4 shadow-sm">
+                    <i class="fa-solid fa-rotate me-1"></i> Actualizar Datos
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+async function abrirEditar(id) {
+    if(!id) return alert("No se recibió un ID válido");
+
+    try {
+        const url = `${window.location.origin}/api/colaborador/${id}`;
+        console.log("Solicitando a:", url);
+
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+            throw new Error(`Error del servidor: ${response.status}`);
+        }
+
+        const col = await response.json();
+        console.log("Datos recibidos:", col);
+
+        // Para el llenado de campos con los nombres exactos del JSON
+        document.getElementById('edit_id').value = col.id_colaborador;
+        document.getElementById('edit_nombre').value = col.nombre_completo;
+        document.getElementById('edit_numero').value = col.numero_empleado;
+        document.getElementById('edit_cargo').value = col.cargo;
+        document.getElementById('edit_dependencia').value = col.id_dependencia;
+        document.getElementById('edit_extension').value = col.extension_telefonica;
+        
+        if (document.getElementById('edit_estado')) {
+            document.getElementById('edit_estado').value = col.estado_laboral;
+        }
+        
+        // Para mostrar el modal
+        const modalElement = document.getElementById('modalEditarColaborador');
+        const modalInstance = bootstrap.Modal.getOrCreateInstance(modalElement);
+        modalInstance.show();
+
+    } catch (error) {
+        console.error("Error en la petición:", error);
+        alert("Error de conexión: Revisa la consola del navegador (F12)");
+    }
+}
+</script>
+
+
+
+</div><%- include('partials/footer') %>

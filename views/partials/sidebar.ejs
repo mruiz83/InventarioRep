@@ -1,0 +1,57 @@
+<button id="menu-toggle" class="hamburger-btn">
+    <span>☰</span>
+</button>
+
+<aside class="sidebar">
+    <div class="sidebar-header text-center py-4">
+        <img src="/img/Logo_ENACAL_2.png" alt="ENACAL Logo" class="img-fluid mb-2" style="max-height: 80px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));">
+        <h6 class="text-white fw-bold m-0">GESTIÓN DE TALLER</h6>
+    </div>
+
+    <nav class="sidebar-menu mt-3">
+        <a href="/dashboard" class="nav-link <%= (typeof pagina !== 'undefined' && pagina === 'inicio') ? 'active' : '' %>">
+            <i class="fa-solid fa-house me-2"></i> Inicio
+        </a>
+        
+        <a href="/repuestos" class="nav-link <%= (typeof pagina !== 'undefined' && pagina === 'inventario') ? 'active' : '' %>">
+            <i class="fa-solid fa-warehouse me-2"></i> Inventario General
+        </a>
+
+        <a href="/taller/recepcion" class="nav-link <%= (typeof pagina !== 'undefined' && pagina === 'taller') ? 'active' : '' %>">
+            <i class="fa-solid fa-screwdriver-wrench me-2"></i> Recepción Técnica
+        </a>
+
+        <a href="/entradas" class="nav-link <%= (typeof pagina !== 'undefined' && pagina === 'entradas') ? 'active' : '' %>">
+            <i class="fa-solid fa-circle-arrow-down me-2"></i> Entrada Repuestos
+        </a>
+
+        <a href="/salidas" class="nav-link <%= (typeof pagina !== 'undefined' && pagina === 'salidas') ? 'active' : '' %>">
+            <i class="fa-solid fa-circle-arrow-up me-2"></i> Salida Repuestos
+        </a>
+
+        <a href="/inventario/equipos" class="nav-link <%= (typeof pagina !== 'undefined' && pagina === 'registro_equipos') ? 'active' : '' %>">
+            <i class="fa-solid fa-laptop-medical me-2"></i> Inventario Equipos
+        </a>
+
+        <a href="/kardex" class="nav-link <%= (typeof pagina !== 'undefined' && pagina === 'kardex') ? 'active' : '' %>">
+            <i class="fa-solid fa-clipboard-list me-2"></i> Kardex
+        </a>
+
+        <div class="px-3 mt-4 mb-2">
+            <small class="text-white-50 fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 1px;">Configuración</small>
+        </div>
+
+        <a href="/configuracion/catalogo" class="nav-link <%= (typeof pagina !== 'undefined' && pagina === 'catalogo_equipos') ? 'active' : '' %>">
+            <i class="fa-solid fa-boxes-stacked me-2"></i> Catálogo Equipos
+        </a>
+
+        <a href="/configuracion/areas" class="nav-link <%= (typeof pagina !== 'undefined' && pagina === 'configuracion') ? 'active' : '' %>">
+            <i class="fa-solid fa-sitemap me-2"></i> Estructura Áreas
+        </a>
+        
+        <a href="/configuracion/colaboradores" class="nav-link <%= (typeof pagina !== 'undefined' && pagina === 'colaboradores') ? 'active' : '' %>">
+            <i class="fa-solid fa-users me-2"></i> Colaboradores
+        </a>
+        
+    </nav>
+</aside>

@@ -1,0 +1,117 @@
+<%- include('partials/header') %>
+<%- include('partials/sidebar') %>
+
+<div class="main-content">
+    <header class="top-nav d-flex justify-content-between align-items-center mb-4">
+        <h4 class="m-0 text-danger fw-bold">📤 Registro de Salida de Repuestos</h4>
+        <div class="user-profile bg-white p-2 rounded-pill shadow-sm">
+            <%- include('partials/user-info') %>
+        </div>
+    </header>
+
+    <main class="container-fluid">
+        <div class="glass-card p-4 shadow-sm border-0" style="background: white; border-radius: 15px;">
+            <form action="/salidas/guardar" method="POST">
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">Fecha de Salida</label>
+                        <!-- fecha_salida -->
+                        <input type="date" name="fecha_salida" class="form-control" value="<%= new Date().toISOString().split('T')[0] %>" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">N° de Orden / Ticket</label>
+                        <!-- orden -->
+                        <input type="text" name="orden" class="form-control" placeholder="Ej: ORD-2026-001" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Equipo Destino</label>
+                        <!-- equipo -->
+                        <input type="text" name="equipo" class="form-control" placeholder="Nombre o ID del equipo donde se usará el repuesto" required>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-bordered align-middle">
+                        <thead class="table-danger text-white">
+                            <tr>
+                                <th style="width: 40%;">Repuesto / Item</th>
+                                <th style="width: 15%;">Stock Disp.</th>
+                                <th style="width: 15%;">Cant. Salida</th>
+                                <th style="width: 25%;">Observaciones</th>
+                                <th style="width: 5%;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="detalle-tbody">
+                            <tr>
+                                <td>
+                                    <!-- Columna: id_repuestos -->
+                                    <select name="id_repuestos[]" class="form-select select-repuesto" onchange="actualizarStock(this)" required>
+                                        <option value="">Seleccione...</option>
+                                        <% repuestos.forEach(r => { %>
+                                            <option value="<%= r.id_repuestos %>" data-stock="<%= r.stock %>">
+                                                <%= r.descripcion %>
+                                            </option>
+                                        <% }) %>
+                                    </select>
+                                </td>
+                                <td>
+                                    <input type="number" class="form-control bg-light stock-previo" readonly value="0">
+                                </td>
+                                <td>
+                                    <!-- Columna: cantidad -->
+                                    <input type="number" name="cantidad[]" class="form-control input-cantidad" min="1" value="1" oninput="validarStock(this)" required>
+                                </td>
+                                <td>
+                                    <!-- Columna: observaciones -->
+                                    <input type="text" name="observaciones[]" class="form-control" placeholder="Nota opcional...">
+                                </td>
+                                <td class="text-center"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <button type="button" class="btn btn-outline-danger btn-sm mt-2 mb-4 rounded-pill" onclick="agregarFila()">
+                    <i class="fa-solid fa-plus me-1"></i> Agregar otra línea
+                </button>
+
+                <div class="d-flex justify-content-end gap-2 border-top pt-3">
+                    <a href="/dashboard" class="btn btn-light rounded-pill px-4">Cancelar</a>
+                    <button type="submit" class="btn btn-danger rounded-pill px-4 shadow">
+                        <i class="fa-solid fa-check me-1"></i> Procesar Salida
+                    </button>
+                </div>
+            </form>
+        </div>
+    </main>
+</div>
+
+<script>
+    function actualizarStock(select) {
+        const fila = select.closest('tr');
+        const stockActual = select.options[select.selectedIndex].getAttribute('data-stock') || 0;
+        fila.querySelector('.stock-previo').value = stockActual;
+        fila.querySelector('.input-cantidad').max = stockActual;
+    }
+
+    function validarStock(input) {
+        const fila = input.closest('tr');
+        const stock = parseInt(fila.querySelector('.stock-previo').value);
+        if (parseInt(input.value) > stock) {
+            alert('Stock insuficiente');
+            input.value = stock;
+        }
+    }
+
+    function agregarFila() {
+        const tbody = document.getElementById("detalle-tbody");
+        const nuevaFila = tbody.querySelector('tr').cloneNode(true);
+        nuevaFila.querySelectorAll('input').forEach(i => i.value = i.className.includes('stock-previo') ? 0 : '');
+        nuevaFila.querySelectorAll('select').forEach(s => s.selectedIndex = 0);
+        nuevaFila.querySelector('td:last-child').innerHTML = 
+            '<button type="button" class="btn btn-sm text-danger border-0" onclick="this.closest(\'tr\').remove()">❌</button>';
+        tbody.appendChild(nuevaFila);
+    }
+</script>
+
+<%- include('partials/footer') %>
