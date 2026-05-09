@@ -1,6 +1,40 @@
 <%- include('partials/header') %>
 <%- include('partials/sidebar') %>
 
+<style>
+  
+    
+    /* 🔥 Ajustar ancho de Select2 en la tabla */
+    .select2-container {
+        width: 100% !important;
+        min-width: 200px;
+        max-width: 100%;
+    }
+    
+    .select2-container--default .select2-selection--single {
+        height: 38px !important;
+        padding: 5px 0;
+    }
+    
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        line-height: 28px !important;
+        font-size: 13px;
+    }
+    
+    /* Para que no se desborde en pantallas pequeñas */
+    @media (max-width: 768px) {
+        .select2-container {
+            min-width: 150px;
+        }
+    }
+    
+    /* Ajustar el dropdown (lista desplegable) */
+    .select2-dropdown {
+        width: 400px !important;
+        min-width: 300px;
+    }
+</style>
+
 <div class="main-content">
     <header class="top-nav d-flex justify-content-between align-items-center mb-4">
         <h4 class="m-0 text-danger fw-bold">📤 Registro de Salida de Repuestos</h4>
@@ -38,19 +72,20 @@
                                 <th style="width: 15%;">Stock Disp.</th>
                                 <th style="width: 15%;">Cant. Salida</th>
                                 <th style="width: 25%;">Observaciones</th>
-                                <th style="width: 5%;"></th>
                             </tr>
                         </thead>
                         <tbody id="detalle-tbody">
                             <tr>
                                 <td>
                                     <!-- Columna: id_repuestos -->
-                                    <select name="id_repuestos[]" class="form-select select-repuesto" onchange="actualizarStock(this)" required>
-                                        <option value="">Seleccione...</option>
+                                    <select name="id_repuestos[]" class="form-select select-repuesto select2-buscar" 
+                                            onchange="actualizarStock(this)" required style="width: 100%;">
+                                        <option value="">🔍 Buscar repuesto...</option>
                                         <% repuestos.forEach(r => { %>
-                                            <option value="<%= r.id_repuestos %>" data-stock="<%= r.stock %>">
-                                                <%= r.descripcion %>
-                                            </option>
+                                            <option value="<%= r.id_repuestos %>" data-stock="<%= r.stock %>" title="<%= r.descripcion %>">
+                                                <%= r.descripcion.length > 50 ? r.descripcion.substring(0, 47) + '...' : r.descripcion %> 
+                                                (Stock: <%= r.stock %>)
+                                                </option>
                                         <% }) %>
                                     </select>
                                 </td>
@@ -65,7 +100,6 @@
                                     <!-- Columna: observaciones -->
                                     <input type="text" name="observaciones[]" class="form-control" placeholder="Nota opcional...">
                                 </td>
-                                <td class="text-center"></td>
                             </tr>
                         </tbody>
                     </table>
@@ -87,6 +121,19 @@
 </div>
 
 <script>
+    // Función para inicializar Select2 en un elemento select
+    function initSelect2(selectElement) {
+        if (selectElement && typeof $ !== 'undefined') {
+            $(selectElement).select2({
+                placeholder: "🔍 Buscar repuesto...",
+                allowClear: true,
+                width: '100%',
+                language: 'es'
+            });
+        }
+    }
+
+    // Función para actualizar stock al seleccionar
     function actualizarStock(select) {
         const fila = select.closest('tr');
         const stockActual = select.options[select.selectedIndex].getAttribute('data-stock') || 0;
@@ -94,6 +141,7 @@
         fila.querySelector('.input-cantidad').max = stockActual;
     }
 
+    // Función para validar stock
     function validarStock(input) {
         const fila = input.closest('tr');
         const stock = parseInt(fila.querySelector('.stock-previo').value);
@@ -103,15 +151,33 @@
         }
     }
 
+    // Función para agregar nueva fila
     function agregarFila() {
         const tbody = document.getElementById("detalle-tbody");
         const nuevaFila = tbody.querySelector('tr').cloneNode(true);
+        
+        // Limpiar valores
         nuevaFila.querySelectorAll('input').forEach(i => i.value = i.className.includes('stock-previo') ? 0 : '');
         nuevaFila.querySelectorAll('select').forEach(s => s.selectedIndex = 0);
+        
+        // Agregar botón eliminar
         nuevaFila.querySelector('td:last-child').innerHTML = 
             '<button type="button" class="btn btn-sm text-danger border-0" onclick="this.closest(\'tr\').remove()">❌</button>';
+        
         tbody.appendChild(nuevaFila);
+        
+        // 🔥 Inicializar Select2 en el nuevo select agregado
+        const nuevoSelect = nuevaFila.querySelector('.select-repuesto');
+        initSelect2(nuevoSelect);
     }
+
+    // DOMContentLoaded - Inicializar todos los selects al cargar la página
+    document.addEventListener('DOMContentLoaded', function() {
+        // Inicializar Select2 en todos los selects existentes
+        document.querySelectorAll('.select-repuesto').forEach(select => {
+            initSelect2(select);
+        });
+    });
 </script>
 
 <%- include('partials/footer') %>
