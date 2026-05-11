@@ -320,43 +320,52 @@ app.post('/salidas/guardar', async (req, res) => {
 
 // Registro de equipos
 app.get('/inventario/equipos', async (req, res) => {
-    if (req.session.loggedin) {
-        try {
-            const [tipos] = await db.query('SELECT * FROM tipos_equipo ORDER BY nombre_tipo ASC');
-            const [marcas] = await db.query('SELECT * FROM marcas ORDER BY nombre_marca ASC');
+    if (!req.session.loggedin) return res.redirect('/');
+    
+    try {
+        // 🔥 Asegúrate de que esta consulta sea DISTINCT o única
+        const [tipos] = await db.query('SELECT * FROM tipos_equipo ORDER BY nombre_tipo ASC');
         
-            const sqlEquipos = `
-                SELECT e.*, c.nombre_completo AS nombre_colaborador, d.nombre_dependencia 
-                FROM equipos e
-                LEFT JOIN colaboradores c ON e.id_colaborador = c.id_colaborador
-                LEFT JOIN dependencias d ON c.id_dependencia = d.id_dependencia
-                ORDER BY e.id_equipo DESC`;
-            const [equipos] = await db.query(sqlEquipos);
+        const [marcas] = await db.query('SELECT * FROM marcas ORDER BY nombre_marca ASC');
+        
+        const sqlEquipos = `
+            SELECT e.*, c.nombre_completo AS nombre_colaborador, d.nombre_dependencia 
+            FROM equipos e
+            LEFT JOIN colaboradores c ON e.id_colaborador = c.id_colaborador
+            LEFT JOIN dependencias d ON c.id_dependencia = d.id_dependencia
+            ORDER BY e.id_equipo DESC`;
+        const [equipos] = await db.query(sqlEquipos);
 
-            const [colaboradores] = await db.query(`
-                SELECT
-                    c.id_colaborador, 
-                    c.nombre_completo, 
-                    d.id_dependencia, 
-                    d.nombre_dependencia 
-                FROM colaboradores c
-                JOIN dependencias d ON c.id_dependencia = d.id_dependencia
-                WHERE estado_laboral = 'Activo' 
-                ORDER BY nombre_completo ASC`);
+        const [colaboradores] = await db.query(`
+            SELECT
+                c.id_colaborador, 
+                c.nombre_completo, 
+                d.id_dependencia, 
+                d.nombre_dependencia 
+            FROM colaboradores c
+            JOIN dependencias d ON c.id_dependencia = d.id_dependencia
+            WHERE estado_laboral = 'Activo' 
+            ORDER BY nombre_completo ASC`);
 
-            res.render('registro_equipos', { 
-                nombre: req.session.nombreReal, 
-                tipos, marcas, equipos, colaboradores, 
-                pagina: 'registro_equipos' 
-            });
-        } catch (error) { 
-            console.error(error);
-            res.status(500).send("Error: " + error.message); 
-        }
-    } else { 
-        res.redirect('/'); 
+        // 🔥 Depuración: Ver cuántos tipos estás enviando
+        console.log("Tipos de equipo encontrados:", tipos.length);
+        console.log("Tipos:", JSON.stringify(tipos, null, 2));
+
+        res.render('registro_equipos', { 
+            nombre: req.session.nombreReal, 
+            tipos: tipos,       // 👈 Asegúrate que sea solo 'tipos'
+            marcas: marcas,     // 👈 Y que no se esté pisando con otra variable
+            equipos: equipos, 
+            colaboradores: colaboradores, 
+            pagina: 'registro_equipos' 
+        });
+        
+    } catch (error) { 
+        console.error(error);
+        res.status(500).send("Error: " + error.message); 
     }
-});    
+});
+
 
 app.get('/api/modelos/:id_tipo/:id_marca', async (req, res) => {
     const { id_tipo, id_marca } = req.params;
@@ -384,20 +393,55 @@ app.post('/inventario/equipos/guardar', async (req, res) => {
             SELECT d.nombre_dependencia 
             FROM colaboradores c
             JOIN dependencias d ON c.id_dependencia = d.id_dependencia
-            WHERE c.id_colaborador = ?`, [id_colaborador]);
+            WHERE c.id_colaborador = ?
+        `, [id_colaborador]);
 
-        // Acá es para determinar si se encuentra el colaborador, extraemos la oficina o dependencia, si no se encuentra mostrará TECNOLOGIA por defecto
         const oficinaFinal = datosColaborador.length > 0 
             ? datosColaborador[0].nombre_dependencia.toUpperCase() 
             : 'TECNOLOGIA';
 
-        const num = (tipo[0].ultimo_numero || 0) + 1;
-        const codInf = `${tipo[0].prefijo}${num}`;
+        // 🔥 NUEVO: Calcular el código informático automáticamente desde la base de datos
+        // Esto evita depender de 'ultimo_numero' que puede estar desactualizado
+        
+        // 1. Obtener el máximo número REAL usado para este prefijo
+        const [maxExistente] = await db.query(
+            `SELECT MAX(CAST(SUBSTRING(codigo_informatico, ?) AS UNSIGNED)) as max_num
+             FROM equipos 
+             WHERE codigo_informatico LIKE ?`,
+            [tipo[0].prefijo.length + 1, `${tipo[0].prefijo}%`]
+        );
+        
+        let num = (maxExistente[0].max_num || 0) + 1;
+        let codInf = `${tipo[0].prefijo}${num.toString().padStart(4, '0')}`;
+        
+        // 2. Verificar que el código no exista (por si acaso)
+        let existe = true;
+        let intentos = 0;
+        const maxIntentos = 100;
+        
+        while (existe && intentos < maxIntentos) {
+            const [verificar] = await db.query(
+                'SELECT COUNT(*) as total FROM equipos WHERE codigo_informatico = ?',
+                [codInf]
+            );
+            
+            if (verificar[0].total > 0) {
+                num++;
+                codInf = `${tipo[0].prefijo}${num}`;
+                intentos++;
+            } else {
+                existe = false;
+            }
+        }
+        
+        if (existe) {
+            throw new Error('No se pudo generar un código único después de varios intentos');
+        }
+
         const marcaModelo = `${marca[0]?.nombre_marca || 'GENERICA'} ${modelo[0]?.nombre_modelo || 'S/M'}`.toUpperCase();
         const codInv = codigo_inventario ? codigo_inventario.toUpperCase().trim() : codInf;
         const estadoFinal = estado || 'Operativo';
 
-        // para incluir oficina en el registro dek equipo
         const sql = `
             INSERT INTO equipos 
             (codigo_inventario, codigo_informatico, tipo_equipo, marca_modelo, serie, id_colaborador, area_departamento, estado, fecha_registro) 
@@ -415,14 +459,19 @@ app.post('/inventario/equipos/guardar', async (req, res) => {
             estadoFinal
         ]);
 
+        // 🔥 Actualizar el último_numero en tipos_equipo para mantener consistencia (opcional)
         await db.query('UPDATE tipos_equipo SET ultimo_numero = ? WHERE id_tipo = ?', [num, id_tipo]);
+        
+        req.flash('success', `✅ Equipo registrado correctamente. Código: ${codInf}`);
         res.redirect('/inventario/equipos');
 
     } catch (error) {
         console.error("Error SQL:", error.message);
-        res.status(500).send("Error en registro: " + error.message);
+        req.flash('error', 'Error en registro: ' + error.message);
+        res.redirect('/inventario/equipos');
     }
 });
+
 
 
 // Editar los datos de un equipo
@@ -622,12 +671,150 @@ app.post('/configuracion/colaboradores/actualizar', restringirA([1]), async (req
 
 // Taller y recepción
 app.get('/taller/recepcion', async (req, res) => {
-    if (req.session.loggedin) {
-        const [listaEquipos] = await db.query('SELECT id_equipo, codigo_informatico, marca_modelo FROM equipos');
-        const [tecnicos] = await db.query("SELECT u.id_usuarios, u.nombre FROM usuarios u JOIN rol_usuarios r ON u.id_rol = r.id_rol WHERE r.nombre_rol LIKE '%Tecnico%'");
-        const [ingresos] = await db.query(`SELECT r.*, e.codigo_informatico, e.marca_modelo, u.nombre AS nombre_tecnico FROM recepcion_equipos r JOIN equipos e ON r.id_equipo = e.id_equipo LEFT JOIN usuarios u ON r.tecnico_asignado = u.id_usuarios ORDER BY r.fecha_ingreso DESC`);
-        res.render('recepcion', { nombre: req.session.nombreReal, ingresos, listaEquipos, listaTecnicos: tecnicos, pagina: 'taller' });
-    } else { res.redirect('/'); }
+    if (!req.session.loggedin) return res.redirect('/');
+    
+    try {
+        // Obtener equipos
+        const [listaEquipos] = await db.query(`
+            SELECT id_equipo, codigo_informatico, marca_modelo, codigo_inventario, area_departamento, serie 
+            FROM equipos 
+            ORDER BY codigo_informatico ASC
+        `);
+        
+        // Obtener técnicos (todos los usuarios)
+        const [tecnicos] = await db.query(`
+            SELECT id_usuarios, nombre 
+            FROM usuarios 
+            ORDER BY nombre ASC
+        `);
+        
+        // Obtener ingresos con datos completos para el datagrid
+        const [ingresos] = await db.query(`
+            SELECT 
+                r.id_recepcion,
+                r.fecha_ingreso,
+                r.falla_reportada,
+                r.accesorios,
+                r.quien_entrega,
+                r.estado_reparacion,
+                e.codigo_informatico,
+                e.marca_modelo,
+                u.nombre AS nombre_tecnico
+            FROM recepcion_equipos r 
+            JOIN equipos e ON r.id_equipo = e.id_equipo 
+            LEFT JOIN usuarios u ON r.tecnico_asignado = u.id_usuarios 
+            ORDER BY r.fecha_ingreso DESC
+        `);
+        
+        console.log("✅ Equipos encontrados:", listaEquipos.length);
+        console.log("✅ Técnicos encontrados:", tecnicos.length);
+        console.log("✅ Órdenes encontradas:", ingresos.length);
+        
+        res.render('recepcion', { 
+            nombre: req.session.nombreReal,
+            rol: req.session.rol,
+            ingresos, 
+            listaEquipos, 
+            listaTecnicos: tecnicos, 
+            pagina: 'taller' 
+        });
+        
+    } catch(error) {
+        console.error("❌ Error en recepción:", error);
+        req.flash('error', 'Error al cargar la página de recepción');
+        res.redirect('/dashboard');
+    }
+});
+
+
+// Guardar recepción de equipo
+app.post('/taller/recepcion/guardar', async (req, res) => {
+    if (!req.session.loggedin) return res.redirect('/');
+
+    const { id_equipo, tecnico_asignado, quien_entrega, accesorios, falla_reportada } = req.body;
+
+    // Validaciones básicas
+    if (!id_equipo || !tecnico_asignado || !quien_entrega || !falla_reportada) {
+        req.flash('error', 'Todos los campos obligatorios deben ser llenados');
+        return res.redirect('/taller/recepcion');
+    }
+
+    try {
+        // Insertar en recepcion_equipos
+        const [result] = await db.query(`
+            INSERT INTO recepcion_equipos 
+            (id_equipo, fecha_ingreso, falla_reportada, accesorios, quien_entrega, estado_reparacion, tecnico_asignado, notas_adicionales) 
+            VALUES (?, NOW(), ?, ?, ?, 'Pendiente', ?, ?)
+        `, [id_equipo, falla_reportada, accesorios || null, quien_entrega, tecnico_asignado, null]);
+
+        req.flash('success', `✅ Orden de servicio #${result.insertId} registrada correctamente`);
+        res.redirect('/taller/recepcion');
+
+    } catch (error) {
+        console.error("Error al guardar recepción:", error);
+        req.flash('error', 'Error al registrar la orden: ' + error.message);
+        res.redirect('/taller/recepcion');
+    }
+});
+
+
+// Imprimir orden de servicio
+app.get('/taller/recepcion/imprimir/:id_recepcion', async (req, res) => {
+    if (!req.session.loggedin) return res.redirect('/');
+
+    const { id_recepcion } = req.params;
+
+    try {
+        const [ordenes] = await db.query(`
+            SELECT 
+                r.*,
+                e.codigo_informatico,
+                e.marca_modelo,
+                e.serie,
+                e.area_departamento,
+                u.nombre AS tecnico_nombre
+            FROM recepcion_equipos r
+            JOIN equipos e ON r.id_equipo = e.id_equipo
+            LEFT JOIN usuarios u ON r.tecnico_asignado = u.id_usuarios
+            WHERE r.id_recepcion = ?
+        `, [id_recepcion]);
+
+        if (ordenes.length === 0) {
+            req.flash('error', 'Orden no encontrada');
+            return res.redirect('/taller/recepcion');
+        }
+
+        res.render('imprimir_orden', { orden: ordenes[0] });
+
+    } catch (error) {
+        console.error("Error al imprimir orden:", error);
+        req.flash('error', 'Error al generar la orden');
+        res.redirect('/taller/recepcion');
+    }
+});
+
+
+// Marcar equipo como entregado
+app.get('/taller/recepcion/entregar/:id_recepcion', async (req, res) => {
+    if (!req.session.loggedin) return res.redirect('/');
+
+    const { id_recepcion } = req.params;
+
+    try {
+        await db.query(`
+            UPDATE recepcion_equipos 
+            SET estado_reparacion = 'Entregado' 
+            WHERE id_recepcion = ?
+        `, [id_recepcion]);
+
+        req.flash('success', '✅ Equipo marcado como entregado');
+        res.redirect('/taller/recepcion');
+
+    } catch (error) {
+        console.error("Error al entregar equipo:", error);
+        req.flash('error', 'Error al actualizar estado');
+        res.redirect('/taller/recepcion');
+    }
 });
 
 

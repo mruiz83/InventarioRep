@@ -10,6 +10,8 @@
         </div>
     </header>
 
+    
+
     <div class="row g-4">
 
         <!-- Para el buscador universal -->
@@ -30,10 +32,18 @@
                 <form action="/inventario/equipos/guardar" method="POST" id="formEquipo">
                     <div class="mb-3">
                         <label class="form-label-custom">1. Tipo de Equipo</label>
+
+<!-- Depuración: Ver qué datos llegan -->
+<div style="display: none;">
+    <%- JSON.stringify(tipos) %>
+</div>
+
                         <select name="id_tipo" id="id_tipo" class="form-select input-modern" required>
                             <option value="">Seleccione tipo...</option>
-                            <% tipos.forEach(t => { %>
-                                <option value="<%= t.id_tipo %> text-uppercase"><%= t.nombre_tipo %> (<%= t.prefijo %>)</option>
+                             <% tipos.forEach(t => { %>
+                                <option value="<%= t.id_tipo %>">
+                                    <%= t.nombre_tipo %> (<%= t.prefijo %>)
+                                </option>
                             <% }) %>
                         </select>
                     </div>
@@ -41,7 +51,7 @@
                     <div class="mb-3">
                         <label class="form-label-custom">2. Marca</label>
                         <select name="id_marca" id="id_marca" class="form-select input-modern" required disabled>
-                            <option value="">Primero seleccione tipo...</option>
+                            <option value="">Selecciones marca...</option>
                             <% marcas.forEach(m => { %>
                                 <option value="<%= m.id_marca %>"><%= m.nombre_marca %></option>
                             <% }) %>
@@ -51,7 +61,7 @@
                     <div class="mb-3">
                         <label class="form-label-custom">3. Modelo</label>
                         <select name="id_modelo" id="id_modelo" class="form-select input-modern" required disabled>
-                            <option value="">Seleccione marca...</option>
+                            <option value="">Seleccione modelo...</option>
                         </select>
                     </div>
 
@@ -152,6 +162,10 @@
             </div>
         </div>
     </div>
+
+
+
+    
 </div>
 
 <!-- MODAL DE EDICIÓN (Ubicación) -->

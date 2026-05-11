@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Orden de Servicio #<%= orden.id_recepcion %></title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            padding: 20px;
+            background: white;
+        }
+        .orden-container {
+            max-width: 800px;
+            margin: 0 auto;
+            border: 1px solid #ccc;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        
+        /* HEADER CON LOGO Y TÍTULO */
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #003366;
+        }
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .logo-enacal {
+            width: 60px;
+            height: 60px;
+        }
+        .logo-enacal img {
+            width: 160%;
+            height: 160%;
+            object-fit: contain;
+        }
+        .logo-text {
+            font-size: 14px;
+            font-weight: bold;
+            color: #003366;
+        }
+        .logo-text h1 {
+            font-size: 18px;
+            margin: 0;
+        }
+        .taller-icon {
+            text-align: right;
+        }
+        .taller-icon i {
+            font-size: 30px;
+            color: #667eea;
+        }
+        .taller-icon p {
+            font-size: 10px;
+            margin-top: 5px;
+            color: #666;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .header h2 {
+            font-size: 14px;
+            color: #666;
+            margin-top: 5px;
+        }
+        .folio {
+            text-align: right;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            background: #f0f0f0;
+            padding: 5px 10px;
+            border-radius: 5px;
+        }
+        .info-section {
+            margin-bottom: 15px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .info-row {
+            margin-bottom: 5px;
+        }
+        .label {
+            font-weight: bold;
+            display: inline-block;
+            width: 120px;
+        }
+        .falla {
+            background: #f9f9f9;
+            padding: 10px;
+            margin: 15px 0;
+            border-left: 3px solid red;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px dashed #ccc;
+            text-align: center;
+            font-size: 10px;
+        }
+        .firma {
+            margin-top: 30px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .firma-linea {
+            text-align: center;
+            width: 45%;
+        }
+        .firma-linea hr {
+            margin-top: 30px;
+            width: 100%;
+        }
+        @media print {
+            body { padding: 0; margin: 0; }
+            .no-print { display: none; }
+            button { display: none; }
+            .orden-container {
+                box-shadow: none;
+                border: none;
+                padding: 0;
+            }
+        }
+        button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        button:hover { background: #0056b3; }
+        .btn-cerrar {
+            background: #6c757d;
+            margin-left: 10px;
+        }
+        .btn-cerrar:hover { background: #5a6268; }
+    </style>
+    <!-- Font Awesome para iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+<div class="orden-container">
+    <!-- HEADER CON LOGO REAL Y TALLER -->
+    <div class="header-top">
+        <div class="logo-area">
+            <div class="logo-enacal">
+                <img src="/img/logo_ENACAL.png" alt="Logo ENACAL">
+            </div>
+        </div>
+        <div class="taller-icon">
+            <i class="fa-solid fa-screwdriver-wrench"></i>
+            <p>TALLER DE SOPORTE TÉCNICO</p>
+        </div>
+    </div>
+    
+    <div class="header">
+        <h2>ORDEN DE SERVICIO / RECEPCIÓN DE EQUIPO</h2>
+    </div>
+    
+    <div class="folio">
+        <strong>N° ORDEN:</strong> <%= orden.id_recepcion %> | 
+        <strong>FECHA:</strong> <%= new Date(orden.fecha_ingreso).toLocaleString() %>
+    </div>
+    
+    <div class="info-section">
+        <div class="info-row"><span class="label"> Código Equipo:</span> <%= orden.codigo_informatico %></div>
+        <div class="info-row"><span class="label"> Marca/Modelo:</span> <%= orden.marca_modelo %></div>
+        <div class="info-row"><span class="label"> Serie:</span> <%= orden.serie || 'N/A' %></div>
+        <div class="info-row"><span class="label"> Ubicación:</span> <%= orden.area_departamento || 'N/A' %></div>
+    </div>
+    
+    <div class="info-section">
+        <div class="info-row"><span class="label"> Quién Entrega:</span> <%= orden.quien_entrega %></div>
+        <div class="info-row"><span class="label"> Técnico Asignado:</span> <%= orden.tecnico_nombre || 'Por asignar' %></div>
+        <div class="info-row"><span class="label"> Accesorios:</span> <%= orden.accesorios || 'Ninguno' %></div>
+    </div>
+    
+    <div class="falla">
+        <strong> FALLA REPORTADA:</strong><br>
+        <%= orden.falla_reportada %>
+    </div>
+    
+    <div class="footer">
+        <p>Este documento es un comprobante de recepción del equipo.</p>
+        <p>El equipo será revisado según el orden de llegada. Plazo estimado: 3-5 días hábiles.</p>
+    </div>
+    
+    <div class="firma">
+        <div class="firma-linea">
+            <hr>
+            <p>_________________________</p>
+            <p><strong>Firma Cliente/Usuario</strong></p>
+            <p><%= orden.quien_entrega %></p>
+        </div>
+        <div class="firma-linea">
+            <hr>
+            <p>_________________________</p>
+            <p><strong>Firma Técnico</strong></p>
+            <p><%= orden.tecnico_nombre || 'Por asignar' %></p>
+        </div>
+    </div>
+    
+    <div class="footer" style="margin-top: 20px;">
+        <p><i class="fa-regular fa-clock"></i> Fecha estimada de entrega: _______________</p>
+    </div>
+</div>
+
+<div style="text-align: center; margin-top: 20px;" class="no-print">
+    <button onclick="window.print()"><i class="fa-solid fa-print"></i> Imprimir / Guardar PDF</button>
+    <button class="btn-cerrar" onclick="window.close()"><i class="fa-solid fa-times"></i> Cerrar</button>
+</div>
+</body>
+</html>
