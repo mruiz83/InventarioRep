@@ -73,12 +73,39 @@ app.get('/dashboard', async (req, res) => {
     if (!req.session.loggedin) return res.redirect('/');
     
     try {
-        // Consultas reales a tu base de datos
-        const [equipos] = await db.query('SELECT COUNT(*) as total FROM equipos');
-        const [asignados] = await db.query('SELECT COUNT(*) as total FROM equipos WHERE estado = "Asignado"');
-        const [colaboradores] = await db.query('SELECT COUNT(*) as total FROM colaboradores');
+        // ============================================
+        // 1. EQUIPOS Y ASIGNACIONES (CORREGIDO)
+        // ============================================
         
-        // Calcular stock crítico
+        // Total de equipos registrados
+        const [equipos] = await db.query('SELECT COUNT(*) as total FROM equipos');
+        
+        // 🔥 CORREGIDO: Equipos asignados (los que tienen un colaborador asignado)
+        const [asignados] = await db.query(`
+            SELECT COUNT(*) as total 
+            FROM equipos 
+            WHERE id_colaborador IS NOT NULL
+        `);
+        
+        // Total de colaboradores ACTIVOS
+        const [colaboradores] = await db.query(`
+            SELECT COUNT(*) as total 
+            FROM colaboradores 
+            WHERE estado_laboral = 'Activo'
+        `);
+        
+        // 🔥 CORREGIDO: Colaboradores que TIENEN equipo asignado
+        const [colabConEquipo] = await db.query(`
+            SELECT COUNT(DISTINCT id_colaborador) as total 
+            FROM equipos 
+            WHERE id_colaborador IS NOT NULL
+        `);
+        
+        // ============================================
+        // 2. STOCK DE REPUESTOS
+        // ============================================
+        
+        // Stock crítico (stock <= 0)
         const [stockCritico] = await db.query(`
             SELECT COUNT(*) as total 
             FROM repuestos r
@@ -89,6 +116,7 @@ app.get('/dashboard', async (req, res) => {
             ) <= 0
         `);
         
+        // Stock mínimo (stock between 1 and 4)
         const [stockMinimo] = await db.query(`
             SELECT COUNT(*) as total 
             FROM repuestos r
@@ -96,8 +124,56 @@ app.get('/dashboard', async (req, res) => {
                 SELECT IFNULL(SUM(e.cantidad), 0) FROM entradas e WHERE e.id_repuestos = r.id_repuestos
             ) - (
                 SELECT IFNULL(SUM(s.cantidad), 0) FROM salidas s WHERE s.id_repuestos = r.id_repuestos
+            ) > 0 
+            AND (
+                SELECT IFNULL(SUM(e.cantidad), 0) FROM entradas e WHERE e.id_repuestos = r.id_repuestos
+            ) - (
+                SELECT IFNULL(SUM(s.cantidad), 0) FROM salidas s WHERE s.id_repuestos = r.id_repuestos
             ) < 5
         `);
+        
+        // Stock saludable (stock >= 5)
+        const [stockSaludable] = await db.query(`
+            SELECT COUNT(*) as total 
+            FROM repuestos r
+            WHERE (
+                SELECT IFNULL(SUM(e.cantidad), 0) FROM entradas e WHERE e.id_repuestos = r.id_repuestos
+            ) - (
+                SELECT IFNULL(SUM(s.cantidad), 0) FROM salidas s WHERE s.id_repuestos = r.id_repuestos
+            ) >= 5
+        `);
+        
+        // ============================================
+        // 3. ÓRDENES DE TRABAJO
+        // ============================================
+        
+        const [ordenesPendientes] = await db.query(`
+            SELECT COUNT(*) as total 
+            FROM recepcion_equipos 
+            WHERE estado_reparacion IN ('Pendiente', 'En Proceso')
+        `);
+        
+        const [ordenesReparadas] = await db.query(`
+            SELECT COUNT(*) as total 
+            FROM recepcion_equipos 
+            WHERE estado_reparacion = 'Reparado'
+        `);
+        
+        const [ordenesEntregadas] = await db.query(`
+            SELECT COUNT(*) as total 
+            FROM recepcion_equipos 
+            WHERE estado_reparacion = 'Entregado'
+        `);
+
+        // ============================================
+        // 4. DEBUG: Mostrar en consola del servidor
+        // ============================================
+        console.log('========== DASHBOARD DATA ==========');
+        console.log('Total Equipos:', equipos[0].total);
+        console.log('Equipos Asignados:', asignados[0].total);
+        console.log('Total Colaboradores:', colaboradores[0].total);
+        console.log('Colaboradores con Equipo:', colabConEquipo[0].total);
+        console.log('====================================');
 
         res.render('dashboard', {
             nombre: req.session.nombreReal,
@@ -105,11 +181,16 @@ app.get('/dashboard', async (req, res) => {
             totalEquipos: equipos[0].total,
             asignados: asignados[0].total,
             totalColab: colaboradores[0].total,
-            colabConEquipo: asignados[0].total,
-            stockCero: stockCritico[0].total,
+            colabConEquipo: colabConEquipo[0].total,
+            stockCritico: stockCritico[0].total,
             stockMinimo: stockMinimo[0].total,
+            stockSaludable: stockSaludable[0].total,
+            ordenesPendientes: ordenesPendientes[0].total,
+            ordenesReparadas: ordenesReparadas[0].total,
+            ordenesEntregadas: ordenesEntregadas[0].total,
             pagina: 'inicio'
         });
+        
     } catch (error) {
         console.error("Error al cargar dashboard:", error);
         res.render('dashboard', { 
@@ -118,9 +199,13 @@ app.get('/dashboard', async (req, res) => {
             totalEquipos: 0, 
             asignados: 0, 
             totalColab: 0, 
-            colabConEquipo: 0, 
-            stockCero: 0, 
+            colabConEquipo: 0,
+            stockCritico: 0,
             stockMinimo: 0,
+            stockSaludable: 0,
+            ordenesPendientes: 0,
+            ordenesReparadas: 0,
+            ordenesEntregadas: 0,
             pagina: 'inicio'
         });
     }

@@ -1,171 +1,369 @@
 <%- include('partials/header') %>
 <%- include('partials/sidebar') %>
 
+<style>
+    .stats-card {
+        transition: transform 0.2s ease;
+        cursor: pointer;
+    }
+    .stats-card:hover {
+        transform: translateY(-5px);
+    }
+    .orden-card {
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+    .orden-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    
+    /* El contenido principal ya tiene margin-left por el sidebar */
+    .main-content {
+        margin-left: 280px;
+        padding: 20px 30px;
+        min-height: 100vh;
+    }
+    
+    /* Footer dentro del main-content */
+    .app-footer {
+        margin-top: 30px;
+        padding: 15px 0;
+        text-align: center;
+        border-top: 1px solid #dee2e6;
+        background-color: #f8f9fa;
+    }
+    
+    @media (max-width: 768px) {
+        .main-content {
+            margin-left: 0;
+        }
+    }
+</style>
+
 <div class="main-content">
-    <header class="top-nav d-flex justify-content-between align-items-center mb-4">
-        <div class="page-title">
+    
+    <!-- Header de bienvenida -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
             <h4 class="m-0 text-secondary fw-bold">Panel Principal</h4>
         </div>
-        <div class="user-profile d-flex align-items-center bg-white p-2 rounded-pill shadow-sm">
+        <div class="d-flex align-items-center bg-white p-2 rounded-pill shadow-sm">
             <%- include('partials/user-info') %>
         </div>
-    </header>
-
-   <div class="glass-card p-4 text-center mb-4 border-0 shadow-sm" style="background: white; border-radius: 15px;">
-    <div class="row align-items-center">
-        <div class="col-md-9 text-start ps-4">
-            <h2 class="fw-bold text-primary mb-1">¡Bienvenido, <%= nombre %>!</h2>
-            <p class="text-muted mb-3">Al Sistema de Control e Inventario de Repuestos y Equipos Informáticos (InventarioRep).</p>
-            
-            <div>
-                <span class="badge bg-primary-subtle text-primary border border-primary-subtle p-2 px-3 rounded-pill" style="font-size: 0.8rem;">
-                    <i class="fa-solid fa-user-gear me-1"></i> Técnico en Soporte Técnico
-                </span>
-                <span class="badge bg-light text-secondary p-2 px-3 ms-2 rounded-pill" style="font-size: 0.8rem;">
-                    <i class="fa-solid fa-calendar-day me-1"></i> <%= new Date().toLocaleDateString() %>
-                </span>
-            </div>
-        </div>
-        <div class="col-md-3 text-end pe-4 d-none d-md-block">
-            <img src="/img/Logo_ENACAL_2.png" alt="ENACAL" class="img-fluid" style="max-height: 80px; opacity: 0.8;">
-        </div>
-    </div>
-</div>
-
-        <div class="row">
-    <!-- Gráfico de Equipos y Colaboradores -->
-    <div class="col-md-5 mb-4">
-        <div class="card border-0 shadow-sm p-3" style="border-radius: 15px; cursor: pointer;" onclick="location.href='/inventario/equipos'">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-                <h6 class="fw-bold text-secondary m-0"><i class="fa-solid fa-chart-column me-2 text-primary"></i>Resumen de Asignaciones</h6>
-                <small class="text-primary">Ver Inventario <i class="fa-solid fa-arrow-right"></i></small>
-            </div>
-            <canvas id="chartEquipos" 
-    data-total-equipos="<%= typeof totalEquipos !== 'undefined' ? totalEquipos : 0 %>"
-    data-asignados="<%= typeof asignados !== 'undefined' ? asignados : 0 %>"
-    data-total-colab="<%= typeof totalColab !== 'undefined' ? totalColab : 0 %>"
-    data-colab-equipo="<%= typeof colabConEquipo !== 'undefined' ? colabConEquipo : 0 %>"
-    style="max-height: 200px;">
-</canvas>
-        </div>
     </div>
 
-    <!-- Gráfico de alertas de Stock (Repuestos) -->
-    <div class="col-md-3 mb-4">
-        <div class="card border-0 shadow-sm p-3 text-center" style="border-radius: 15px; cursor: pointer; height: 100%;" onclick="location.href='/repuestos'">
-            <h6 class="fw-bold text-secondary mb-3 text-uppercase small">Alertas de Repuestos</h6>
-            <div class="mb-3">
-                <h2 class="fw-bold text-danger m-0"><%= typeof stockCero !== 'undefined' ? stockCero : 0 %></h2>
-                <small class="text-muted">Sin Existencia</small>
-            </div>
-            <div class="pt-2 border-top">
-                <h2 class="fw-bold text-warning m-0"><%= typeof stockMinimo !== 'undefined' ? stockMinimo : 0 %></h2>
-                <small class="text-muted">Stock Crítico (< 5)</small>
-            </div>
-            <div class="mt-3">
-                <span class="btn btn-sm btn-outline-secondary rounded-pill w-100">Gestionar Stock</span>
-            </div>
-        </div>
-    </div>
-
-    <!-- para el centro de Descargas y Filtros -->
-    <div class="col-md-4 mb-4">
-        <div class="card border-0 shadow-sm p-3" style="border-radius: 15px; background: #f8f9fa;">
-            <h6 class="fw-bold text-dark mb-3"><i class="fa-solid fa-file-export me-2 text-success"></i>Reportes Rápidos</h6>
-            
-            <div class="mb-3">
-                <label class="small fw-bold text-muted">Inventario de Repuestos</label>
-                <div class="input-group input-group-sm mt-1">
-                    <select class="form-select border-0 shadow-sm" id="filtroRepuesto">
-                        <option value="todos">Todos los items</option>
-                        <option value="nuevo">Solo Nuevos</option>
-                        <option value="usado">Solo Usados</option>
-                    </select>
-                    <button class="btn btn-success" onclick="descargarExcel('repuestos')"><i class="fa-solid fa-download"></i></button>
+    <!-- Tarjeta de bienvenida -->
+    <div class="card p-4 text-center mb-4 border-0 shadow-sm" style="background: white; border-radius: 15px;">
+        <div class="row align-items-center">
+            <div class="col-md-9 text-start ps-4">
+                <h2 class="fw-bold text-primary mb-1">¡Bienvenido, <%= nombre %>!</h2>
+                <p class="text-muted mb-3">Al Sistema de Control e Inventario de Repuestos y Equipos Informáticos (InventarioRep).</p>
+                
+                <div>
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle p-2 px-3 rounded-pill" style="font-size: 0.8rem;">
+                        <i class="fa-solid fa-user-gear me-1"></i> Técnico en Soporte Técnico
+                    </span>
+                    <span class="badge bg-light text-secondary p-2 px-3 ms-2 rounded-pill" style="font-size: 0.8rem;">
+                        <i class="fa-solid fa-calendar-day me-1"></i> <%= new Date().toLocaleDateString() %>
+                    </span>
                 </div>
             </div>
+            <div class="col-md-3 text-end pe-4 d-none d-md-block">
+                <img src="/img/Logo_ENACAL_2.png" alt="ENACAL" class="img-fluid" style="max-height: 80px; opacity: 0.8;">
+            </div>
+        </div>
+    </div>
 
-            <div>
-                <label class="small fw-bold text-muted">Inventario de Equipos</label>
-                <div class="input-group input-group-sm mt-1">
-                    <select class="form-select border-0 shadow-sm" id="filtroEquipo">
-                        <option value="todos">Todos los equipos</option>
-                        <option value="asignado">Asignados</option>
-                        <option value="disponible">Disponibles</option>
-                    </select>
-                    <button class="btn btn-success" onclick="descargarExcel('equipos')"><i class="fa-solid fa-download"></i></button>
+    <!-- Fila principal: Gráfico a la izquierda | Contenedor derecho con Stock + Órdenes -->
+<!-- Fila principal: Gráfico a la izquierda | Contenedor derecho con Stock + Órdenes -->
+<div class="row">
+    <!-- Columna Izquierda: Gráfico de Asignaciones -->
+    <div class="col-lg-7 mb-4">
+        <div class="card border-0 shadow-sm h-100" style="border-radius: 15px; cursor: pointer;" onclick="location.href='/inventario/equipos'">
+            <div class="card-body p-4 d-flex flex-column h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="fw-bold text-secondary m-0"><i class="fa-solid fa-chart-column me-2 text-primary"></i>Resumen de Asignaciones</h6>
+                    <small class="text-primary">Ver Inventario <i class="fa-solid fa-arrow-right"></i></small>
+                </div>
+                <div class="flex-grow-1 d-flex align-items-center">
+                    <canvas id="chartEquipos" 
+                        data-total-equipos="<%= totalEquipos %>"
+                        data-asignados="<%= asignados %>"
+                        data-total-colab="<%= totalColab %>"
+                        data-colab-equipo="<%= colabConEquipo %>"
+                        style="width: 100%; max-height: 280px;">
+                    </canvas>
                 </div>
             </div>
         </div>
     </div>
+    
+    <!-- Columna Derecha: Stock (arriba) + Órdenes (abajo) con altura total igual al gráfico -->
+    <div class="col-lg-5 mb-4">
+        <div class="d-flex flex-column h-100">
+            <!-- Tarjetas de Stock (fila superior) - ocupa ~40% de la altura -->
+            <div class="card border-0 shadow-sm mb-3" style="border-radius: 15px; flex: 0 0 auto;">
+                <div class="card-body p-3">
+                    <h6 class="fw-bold text-secondary mb-3"><i class="fa-solid fa-boxes me-2 text-primary"></i>Resumen de Stock</h6>
+                    <div class="row">
+                        <div class="col-4">
+                            <div class="stats-card text-center p-2 rounded-3" style="background: linear-gradient(135deg, #fff5f5 0%, #fff 100%);">
+                                <i class="fa-solid fa-boxes fa-2x text-danger mb-2"></i>
+                                <h4 class="fw-bold text-danger mb-0"><%= stockCritico %></h4>
+                                <small class="text-muted" style="font-size: 0.7rem;">Sin stock</small>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="stats-card text-center p-2 rounded-3" style="background: linear-gradient(135deg, #fff8e7 0%, #fff 100%);">
+                                <i class="fa-solid fa-exclamation-triangle fa-2x text-warning mb-2"></i>
+                                <h4 class="fw-bold text-warning mb-0"><%= stockMinimo %></h4>
+                                <small class="text-muted" style="font-size: 0.7rem;">Stock mínimo</small>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="stats-card text-center p-2 rounded-3" style="background: linear-gradient(135deg, #e8f5e9 0%, #fff 100%);">
+                                <i class="fa-solid fa-check-circle fa-2x text-success mb-2"></i>
+                                <h4 class="fw-bold text-success mb-0"><%= stockSaludable %></h4>
+                                <small class="text-muted" style="font-size: 0.7rem;">Stock saludable</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Órdenes de Trabajo (fila inferior) - ocupa ~55% de la altura -->
+            <div class="card border-0 shadow-sm flex-grow-1 d-flex flex-column" style="border-radius: 15px;">
+                <div class="card-body p-3 d-flex flex-column">
+                    <h6 class="fw-bold text-secondary mb-3"><i class="fa-solid fa-clipboard-list me-2 text-primary"></i>Órdenes de Trabajo</h6>
+                    <div class="row text-center flex-grow-1 d-flex align-items-center">
+                        <div class="col-4">
+                            <div class="orden-card p-2 bg-warning bg-opacity-10 rounded-3">
+                                <i class="fa-solid fa-clock fa-2x text-warning mb-1"></i>
+                                <h4 class="fw-bold text-warning mb-0"><%= ordenesPendientes %></h4>
+                                <small class="text-muted" style="font-size: 0.7rem;">Pendientes</small>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="orden-card p-2 bg-info bg-opacity-10 rounded-3">
+                                <i class="fa-solid fa-tools fa-2x text-info mb-1"></i>
+                                <h4 class="fw-bold text-info mb-0"><%= ordenesReparadas %></h4>
+                                <small class="text-muted" style="font-size: 0.7rem;">Reparados</small>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="orden-card p-2 bg-success bg-opacity-10 rounded-3">
+                                <i class="fa-solid fa-check-double fa-2x text-success mb-1"></i>
+                                <h4 class="fw-bold text-success mb-0"><%= ordenesEntregadas %></h4>
+                                <small class="text-muted" style="font-size: 0.7rem;">Entregados</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
-<script src="/js/dashboard.js"></script>
+    <!-- Fila 3: Reportes Rápidos -->
+    <div class="row mt-4">
+        <div class="col-md-5">
+            <div class="card border-0 shadow-sm" style="border-radius: 15px; background: #f8f9fa;">
+                <div class="card-body p-4">
+                    <h6 class="fw-bold text-dark mb-3"><i class="fa-solid fa-file-export me-2 text-success"></i>Reportes Rápidos</h6>
+                    
+                    <div class="mb-3">
+                        <label class="small fw-bold text-muted">Inventario de Repuestos</label>
+                        <div class="input-group input-group-sm mt-1">
+                            <select class="form-select border-0 shadow-sm" id="filtroRepuesto">
+                                <option value="todos">Todos los items</option>
+                                <option value="nuevo">Solo Nuevos</option>
+                                <option value="usado">Solo Usados</option>
+                            </select>
+                            <button class="btn btn-success" onclick="descargarExcel('repuestos')">
+                                <i class="fa-solid fa-download"></i> Excel
+                            </button>
+                        </div>
+                    </div>
 
+                    <div>
+                        <label class="small fw-bold text-muted">Inventario de Equipos</label>
+                        <div class="input-group input-group-sm mt-1">
+                            <select class="form-select border-0 shadow-sm" id="filtroEquipo">
+                                <option value="todos">Todos los equipos</option>
+                                <option value="asignado">Asignados</option>
+                                <option value="disponible">Disponibles</option>
+                            </select>
+                            <button class="btn btn-success" onclick="descargarExcel('equipos')">
+                                <i class="fa-solid fa-download"></i> Excel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-
-    <footer class="text-center mt-auto py-3 text-muted">
+    <!-- Footer (dentro del main-content, SIN margen adicional) -->
+    <div class="app-footer">
         <small>© 2026 ENACAL - División de Soporte Técnico</small>
-    </footer>
+    </div>
 </div>
 
-
-<!-- Lógica del gráfico y funciones -->
 <script>
+// ============================================
+// GRÁFICO DE BARRAS APILADAS
+// ============================================
 document.addEventListener('DOMContentLoaded', function() {
     const canvas = document.getElementById('chartEquipos');
-    if (!canvas) return; // Esto es para seguridad por si el elemento no existe
-
+    if (!canvas) return;
+    
+    // Destruir gráfico existente si ya hay uno
+    let existingChart = Chart.getChart(canvas);
+    if (existingChart) {
+        existingChart.destroy();
+    }
+    
     const ctx = canvas.getContext('2d');
     
-    // Se leen los datos desde los atributos data-
-    const totalEquipos = Number(canvas.dataset.totalEquipos);
-    const asignados = Number(canvas.dataset.asignados);
-    const totalColab = Number(canvas.dataset.totalColab);
-    const colabConEquipo = Number(canvas.dataset.colabEquipo);
-
+    const totalEquipos = Number(canvas.dataset.totalEquipos) || 0;
+    const asignados = Number(canvas.dataset.asignados) || 0;
+    const totalColab = Number(canvas.dataset.totalColab) || 0;
+    const colabConEquipo = Number(canvas.dataset.colabEquipo) || 0;
+    
+    // Calcular los que NO tienen asignación
+    const equiposSinAsignar = totalEquipos - asignados;
+    const colabSinEquipo = totalColab - colabConEquipo;
+    
+    // Crear gráfico de BARRAS APILADAS
     new Chart(ctx, {
         type: 'bar',
         data: {
             labels: ['Equipos', 'Colaboradores'],
             datasets: [
                 {
-                    label: 'Total Registrado',
-                    data: [totalEquipos, totalColab],
-                    backgroundColor: 'rgba(233, 236, 239, 0.8)', 
-                    borderRadius: 8
+                    label: 'Con Asignación',
+                    data: [asignados, colabConEquipo],
+                    backgroundColor: '#198754',  // Verde
+                    borderColor: '#198754',
+                    borderWidth: 1,
+                    borderRadius: 8,
+                    barPercentage: 0.6,
+                    categoryPercentage: 0.8,
+                    stack: 'stack1'  // Apila con el mismo stack
                 },
                 {
-                    label: 'Asignados',
-                    data: [asignados, colabConEquipo],
-                    backgroundColor: '#0d6efd',
-                    borderRadius: 8
+                    label: 'Sin Asignación',
+                    data: [equiposSinAsignar, colabSinEquipo],
+                    backgroundColor: '#dc3545',  // Rojo
+                    borderColor: '#dc3545',
+                    borderWidth: 1,
+                    borderRadius: 8,
+                    barPercentage: 0.6,
+                    categoryPercentage: 0.8,
+                    stack: 'stack1'  // Apila con el mismo stack
                 }
             ]
         },
         options: {
             responsive: true,
-            maintainAspectRatio: false,
+            maintainAspectRatio: true,
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            },
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: { 
+                        font: { size: 11, weight: 'bold' },
+                        usePointStyle: true,
+                        boxWidth: 12,
+                        padding: 15
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.dataset.label;
+                            const value = context.raw;
+                            const total = context.chart.data.datasets.reduce((acc, dataset) => {
+                                return acc + (dataset.data[context.dataIndex] || 0);
+                            }, 0);
+                            const porcentaje = ((value / total) * 100).toFixed(1);
+                            return `${label}: ${value} (${porcentaje}%)`;
+                        },
+                        footer: function(context) {
+                            const total = context[0].chart.data.datasets.reduce((acc, dataset) => {
+                                return acc + (dataset.data[context[0].dataIndex] || 0);
+                            }, 0);
+                            return `Total: ${total}`;
+                        }
+                    }
+                }
+            },
             scales: {
-                y: { beginAtZero: true }
+                x: {
+                    stacked: true,  // Apilado en X
+                    title: {
+                        display: true,
+                        text: 'Categoría',
+                        font: { size: 11, weight: 'bold' }
+                    },
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        font: { size: 12, weight: 'bold' }
+                    }
+                },
+                y: {
+                    stacked: true,  // Apilado en Y
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Cantidad',
+                        font: { size: 11, weight: 'bold' }
+                    },
+                    ticks: {
+                        stepSize: 1,
+                        precision: 0,
+                        font: { size: 11 }
+                    },
+                    grid: {
+                        borderDash: [5, 5],
+                        color: '#e9ecef'
+                    }
+                }
+            },
+            // Hacer las barras más anchas
+            layout: {
+                padding: {
+                    left: 10,
+                    right: 10,
+                    top: 10,
+                    bottom: 10
+                }
             }
         }
     });
 });
 
-// Para gestionar las descargas de Excel
+// ============================================
+// DESCARGA DE EXCEL
+// ============================================
 function descargarExcel(tipo) {
-    const filtro = tipo === 'repuestos' ? 
-        document.getElementById('filtroRepuesto').value : 
-        document.getElementById('filtroEquipo').value;
-    
-    console.log(`Generando reporte de ${tipo} con filtro: ${filtro}`);
-    
-    // Descarga de clases
-    alert(`Preparando archivo Excel de ${tipo.toUpperCase()} (${filtro})...`);
+    let filtro = '';
+    if (tipo === 'repuestos') {
+        const filtroRepuesto = document.getElementById('filtroRepuesto');
+        filtro = filtroRepuesto ? filtroRepuesto.value : '';
+    } else {
+        const filtroEquipo = document.getElementById('filtroEquipo');
+        filtro = filtroEquipo ? filtroEquipo.value : '';
+    }
+    console.log('Generando reporte de ' + tipo + ' con filtro: ' + filtro);
+    alert('Preparando archivo Excel de ' + tipo.toUpperCase() + ' (' + filtro + ')...');
 }
 </script>
-
-
 
 <%- include('partials/footer') %>
