@@ -80,7 +80,7 @@ app.get('/dashboard', async (req, res) => {
         // Total de equipos registrados
         const [equipos] = await db.query('SELECT COUNT(*) as total FROM equipos');
         
-        // 🔥 CORREGIDO: Equipos asignados (los que tienen un colaborador asignado)
+        // Equipos asignados (los que tienen un colaborador asignado)
         const [asignados] = await db.query(`
             SELECT COUNT(*) as total 
             FROM equipos 
@@ -94,7 +94,7 @@ app.get('/dashboard', async (req, res) => {
             WHERE estado_laboral = 'Activo'
         `);
         
-        // 🔥 CORREGIDO: Colaboradores que TIENEN equipo asignado
+        // Colaboradores que TIENEN equipo asignado (DISTINCT)
         const [colabConEquipo] = await db.query(`
             SELECT COUNT(DISTINCT id_colaborador) as total 
             FROM equipos 
@@ -105,7 +105,6 @@ app.get('/dashboard', async (req, res) => {
         // 2. STOCK DE REPUESTOS
         // ============================================
         
-        // Stock crítico (stock <= 0)
         const [stockCritico] = await db.query(`
             SELECT COUNT(*) as total 
             FROM repuestos r
@@ -116,7 +115,6 @@ app.get('/dashboard', async (req, res) => {
             ) <= 0
         `);
         
-        // Stock mínimo (stock between 1 and 4)
         const [stockMinimo] = await db.query(`
             SELECT COUNT(*) as total 
             FROM repuestos r
@@ -132,7 +130,6 @@ app.get('/dashboard', async (req, res) => {
             ) < 5
         `);
         
-        // Stock saludable (stock >= 5)
         const [stockSaludable] = await db.query(`
             SELECT COUNT(*) as total 
             FROM repuestos r
@@ -166,13 +163,15 @@ app.get('/dashboard', async (req, res) => {
         `);
 
         // ============================================
-        // 4. DEBUG: Mostrar en consola del servidor
+        // 4. DEBUG (ver en consola del servidor)
         // ============================================
         console.log('========== DASHBOARD DATA ==========');
         console.log('Total Equipos:', equipos[0].total);
         console.log('Equipos Asignados:', asignados[0].total);
+        console.log('Equipos Sin Asignar:', equipos[0].total - asignados[0].total);
         console.log('Total Colaboradores:', colaboradores[0].total);
         console.log('Colaboradores con Equipo:', colabConEquipo[0].total);
+        console.log('Colaboradores sin Equipo:', colaboradores[0].total - colabConEquipo[0].total);
         console.log('====================================');
 
         res.render('dashboard', {
@@ -216,6 +215,242 @@ app.get('/logout', (req, res) => {
     req.session.destroy();
     res.redirect('/');
 });
+
+
+const ExcelJS = require('exceljs');
+
+// ============================================
+// REPORTE DE REPUESTOS A EXCEL
+// ============================================
+app.get('/reporte/repuestos/excel', async (req, res) => {
+    if (!req.session.loggedin) return res.redirect('/');
+    
+    try {
+        const { filtro } = req.query;
+        
+        // Construir la consulta según el filtro
+        let query = `
+            SELECT 
+                r.id_repuestos,
+                r.nombre,
+                r.descripcion,
+                r.marca,
+                r.modelo,
+                r.capacidad,
+                r.serie,
+                r.tipo,
+                r.estado,
+                r.aplicacion,
+                (
+                    SELECT IFNULL(SUM(e.cantidad), 0) FROM entradas e WHERE e.id_repuestos = r.id_repuestos
+                ) - (
+                    SELECT IFNULL(SUM(s.cantidad), 0) FROM salidas s WHERE s.id_repuestos = r.id_repuestos
+                ) AS stock_actual
+            FROM repuestos r
+        `;
+        
+        // Aplicar filtro si es necesario
+        if (filtro === 'nuevo') {
+            query += " WHERE r.estado = 'Nuevo'";
+        } else if (filtro === 'usado') {
+            query += " WHERE r.estado = 'Usado'";
+        }
+        
+        query += " ORDER BY r.id_repuestos ASC";
+        
+        const [repuestos] = await db.query(query);
+        
+        // Crear libro de Excel
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Repuestos');
+        
+        // Definir columnas
+        worksheet.columns = [
+            { header: 'ID', key: 'id', width: 8 },
+            { header: 'Nombre', key: 'nombre', width: 25 },
+            { header: 'Descripción', key: 'descripcion', width: 35 },
+            { header: 'Marca', key: 'marca', width: 15 },
+            { header: 'Modelo', key: 'modelo', width: 15 },
+            { header: 'Capacidad', key: 'capacidad', width: 12 },
+            { header: 'Serie', key: 'serie', width: 15 },
+            { header: 'Tipo', key: 'tipo', width: 12 },
+            { header: 'Estado', key: 'estado', width: 12 },
+            { header: 'Aplicación', key: 'aplicacion', width: 20 },
+            { header: 'Stock Actual', key: 'stock', width: 12 }
+        ];
+        
+        // Estilo de cabecera
+        worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        worksheet.getRow(1).fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FF0E446B' }
+        };
+        worksheet.getRow(1).alignment = { horizontal: 'center', vertical: 'middle' };
+        
+        // Agregar datos
+        repuestos.forEach(repuesto => {
+            worksheet.addRow({
+                id: repuesto.id_repuestos,
+                nombre: repuesto.nombre,
+                descripcion: repuesto.descripcion,
+                marca: repuesto.marca || 'N/A',
+                modelo: repuesto.modelo || 'N/A',
+                capacidad: repuesto.capacidad || 'N/A',
+                serie: repuesto.serie || 'N/A',
+                tipo: repuesto.tipo || 'N/A',
+                estado: repuesto.estado,
+                aplicacion: repuesto.aplicacion || 'N/A',
+                stock: repuesto.stock_actual
+            });
+        });
+        
+        // Agregar fila de resumen
+        worksheet.addRow({});
+        worksheet.addRow({ nombre: 'TOTAL REPUESTOS:', stock: repuestos.length });
+        worksheet.getRow(worksheet.rowCount).font = { bold: true };
+        
+        // Configurar bordes y alineación
+        worksheet.eachRow((row, rowNumber) => {
+            row.eachCell(cell => {
+                cell.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' }
+                };
+                cell.alignment = { vertical: 'middle', horizontal: 'center' };
+            });
+        });
+        
+        // Configurar respuesta HTTP
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename=repuestos_${new Date().toISOString().slice(0,19)}.xlsx`);
+        
+        await workbook.xlsx.write(res);
+        res.end();
+        
+    } catch (error) {
+        console.error("Error al generar reporte de repuestos:", error);
+        res.status(500).send("Error al generar el reporte");
+    }
+});
+
+// ============================================
+// REPORTE DE EQUIPOS A EXCEL
+// ============================================
+app.get('/reporte/equipos/excel', async (req, res) => {
+    if (!req.session.loggedin) return res.redirect('/');
+    
+    try {
+        const { filtro } = req.query;
+        
+        // Construir la consulta según el filtro
+        let query = `
+            SELECT 
+                e.id_equipo,
+                e.codigo_inventario,
+                e.codigo_informatico,
+                e.tipo_equipo,
+                e.marca_modelo,
+                e.serie,
+                e.area_departamento,
+                e.estado,
+                e.fecha_registro,
+                c.nombre_completo AS responsable,
+                d.nombre_dependencia AS dependencia
+            FROM equipos e
+            LEFT JOIN colaboradores c ON e.id_colaborador = c.id_colaborador
+            LEFT JOIN dependencias d ON c.id_dependencia = d.id_dependencia
+        `;
+        
+        // Aplicar filtro si es necesario
+        if (filtro === 'asignado') {
+            query += " WHERE e.id_colaborador IS NOT NULL";
+        } else if (filtro === 'disponible') {
+            query += " WHERE e.id_colaborador IS NULL";
+        }
+        
+        query += " ORDER BY e.id_equipo DESC";
+        
+        const [equipos] = await db.query(query);
+        
+        // Crear libro de Excel
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Equipos');
+        
+        // Definir columnas
+        worksheet.columns = [
+            { header: 'ID', key: 'id', width: 8 },
+            { header: 'Código Inventario', key: 'cod_inv', width: 18 },
+            { header: 'Código Informático', key: 'cod_inf', width: 18 },
+            { header: 'Tipo', key: 'tipo', width: 15 },
+            { header: 'Marca/Modelo', key: 'marca_modelo', width: 30 },
+            { header: 'Serie', key: 'serie', width: 20 },
+            { header: 'Área', key: 'area', width: 25 },
+            { header: 'Estado', key: 'estado', width: 12 },
+            { header: 'Responsable', key: 'responsable', width: 30 },
+            { header: 'Dependencia', key: 'dependencia', width: 25 },
+            { header: 'Fecha Registro', key: 'fecha', width: 15 }
+        ];
+        
+        // Estilo de cabecera
+        worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        worksheet.getRow(1).fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FF0E446B' }
+        };
+        worksheet.getRow(1).alignment = { horizontal: 'center', vertical: 'middle' };
+        
+        // Agregar datos
+        equipos.forEach(equipo => {
+            worksheet.addRow({
+                id: equipo.id_equipo,
+                cod_inv: equipo.codigo_inventario || 'N/A',
+                cod_inf: equipo.codigo_informatico,
+                tipo: equipo.tipo_equipo,
+                marca_modelo: equipo.marca_modelo,
+                serie: equipo.serie,
+                area: equipo.area_departamento || 'N/A',
+                estado: equipo.estado,
+                responsable: equipo.responsable || 'SIN ASIGNAR',
+                dependencia: equipo.dependencia || 'N/A',
+                fecha: equipo.fecha_registro ? new Date(equipo.fecha_registro).toLocaleDateString() : 'N/A'
+            });
+        });
+        
+        // Agregar fila de resumen
+        worksheet.addRow({});
+        worksheet.addRow({ tipo: 'TOTAL EQUIPOS:', marca_modelo: equipos.length });
+        worksheet.getRow(worksheet.rowCount).font = { bold: true };
+        
+        // Configurar bordes
+        worksheet.eachRow((row, rowNumber) => {
+            row.eachCell(cell => {
+                cell.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' }
+                };
+                cell.alignment = { vertical: 'middle', horizontal: 'center' };
+            });
+        });
+        
+        // Configurar respuesta HTTP
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename=equipos_${new Date().toISOString().slice(0,19)}.xlsx`);
+        
+        await workbook.xlsx.write(res);
+        res.end();
+        
+    } catch (error) {
+        console.error("Error al generar reporte de equipos:", error);
+        res.status(500).send("Error al generar el reporte");
+    }
+});
+
 
 // Módulo: Repuestos y entradas
 app.get('/repuestos', async (req, res) => {
@@ -467,7 +702,15 @@ app.get('/api/modelos/:id_tipo/:id_marca', async (req, res) => {
 app.post('/inventario/equipos/guardar', async (req, res) => {
     if (!req.session.loggedin) return res.redirect('/');
 
-    const { id_tipo, id_marca, id_modelo, serie, id_colaborador, codigo_inventario, estado } = req.body;
+    const { 
+        id_tipo, id_marca, id_modelo, serie, id_colaborador, 
+        codigo_inventario, estado,
+        // Especificaciones técnicas
+        procesador, velocidad_procesador, memoria_ram, tipo_memoria, slots_memoria,
+        disco_duro, tipo_disco, capacidad_disco, tarjeta_grafica, vram,
+        sistema_operativo, arquitectura_os, version_os, office_version, antivirus,
+        fecha_instalacion_os, observaciones_tecnicas
+    } = req.body;
 
     try {
         const [tipo] = await db.query('SELECT * FROM tipos_equipo WHERE id_tipo = ?', [id_tipo]);
@@ -485,74 +728,67 @@ app.post('/inventario/equipos/guardar', async (req, res) => {
             ? datosColaborador[0].nombre_dependencia.toUpperCase() 
             : 'TECNOLOGIA';
 
-        // 🔥 NUEVO: Calcular el código informático automáticamente desde la base de datos
-        // Esto evita depender de 'ultimo_numero' que puede estar desactualizado
+        // Generar código informático
+        let num = (tipo[0].ultimo_numero || 0) + 1;
+        let codInf = `${tipo[0].prefijo}${num}`;
         
-        // 1. Obtener el máximo número REAL usado para este prefijo
-        const [maxExistente] = await db.query(
-            `SELECT MAX(CAST(SUBSTRING(codigo_informatico, ?) AS UNSIGNED)) as max_num
-             FROM equipos 
-             WHERE codigo_informatico LIKE ?`,
-            [tipo[0].prefijo.length + 1, `${tipo[0].prefijo}%`]
-        );
-        
-        let num = (maxExistente[0].max_num || 0) + 1;
-        let codInf = `${tipo[0].prefijo}${num.toString().padStart(4, '0')}`;
-        
-        // 2. Verificar que el código no exista (por si acaso)
-        let existe = true;
         let intentos = 0;
-        const maxIntentos = 100;
+        let codigoExiste = true;
         
-        while (existe && intentos < maxIntentos) {
-            const [verificar] = await db.query(
+        while (codigoExiste && intentos < 100) {
+            const [existe] = await db.query(
                 'SELECT COUNT(*) as total FROM equipos WHERE codigo_informatico = ?',
                 [codInf]
             );
             
-            if (verificar[0].total > 0) {
+            if (existe[0].total > 0) {
                 num++;
                 codInf = `${tipo[0].prefijo}${num}`;
                 intentos++;
             } else {
-                existe = false;
+                codigoExiste = false;
             }
-        }
-        
-        if (existe) {
-            throw new Error('No se pudo generar un código único después de varios intentos');
         }
 
         const marcaModelo = `${marca[0]?.nombre_marca || 'GENERICA'} ${modelo[0]?.nombre_modelo || 'S/M'}`.toUpperCase();
         const codInv = codigo_inventario ? codigo_inventario.toUpperCase().trim() : codInf;
         const estadoFinal = estado || 'Operativo';
 
-        const sql = `
+        // Insertar equipo
+        const [result] = await db.query(`
             INSERT INTO equipos 
             (codigo_inventario, codigo_informatico, tipo_equipo, marca_modelo, serie, id_colaborador, area_departamento, estado, fecha_registro) 
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
-        `;
+        `, [codInv, codInf, tipo[0].nombre_tipo.toUpperCase(), marcaModelo, serie.toUpperCase().trim(), id_colaborador, oficinaFinal, estadoFinal]);
 
-        await db.query(sql, [
-            codInv, 
-            codInf, 
-            tipo[0].nombre_tipo.toUpperCase(),
-            marcaModelo, 
-            serie.toUpperCase().trim(),
-            id_colaborador, 
-            oficinaFinal, 
-            estadoFinal
-        ]);
+        const id_equipo = result.insertId;
 
-        // 🔥 Actualizar el último_numero en tipos_equipo para mantener consistencia (opcional)
+        // Insertar especificaciones solo si es Desktop o Laptop
+        const nombreTipo = tipo[0].nombre_tipo.toLowerCase();
+        if (nombreTipo === 'desktop' || nombreTipo === 'laptop') {
+            await db.query(`
+                INSERT INTO especificaciones_equipos 
+                (id_equipo, procesador, velocidad_procesador, memoria_ram, tipo_memoria, slots_memoria,
+                 disco_duro, tipo_disco, capacidad_disco, tarjeta_grafica, vram,
+                 sistema_operativo, arquitectura_os, version_os, office_version, antivirus,
+                 fecha_instalacion_os, observaciones_tecnicas) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `, [
+                id_equipo, procesador, velocidad_procesador, memoria_ram, tipo_memoria, slots_memoria,
+                disco_duro, tipo_disco, capacidad_disco, tarjeta_grafica, vram,
+                sistema_operativo, arquitectura_os, version_os, office_version, antivirus,
+                fecha_instalacion_os, observaciones_tecnicas
+            ]);
+        }
+
         await db.query('UPDATE tipos_equipo SET ultimo_numero = ? WHERE id_tipo = ?', [num, id_tipo]);
-        
-        req.flash('success', `✅ Equipo registrado correctamente. Código: ${codInf}`);
+
+        req.flash('success', `✅ Equipo registrado. Código: ${codInf}`);
         res.redirect('/inventario/equipos');
 
     } catch (error) {
-        console.error("Error SQL:", error.message);
-        req.flash('error', 'Error en registro: ' + error.message);
+        console.error("Error en registro:", error.message);
+        req.flash('error', 'Error: ' + error.message);
         res.redirect('/inventario/equipos');
     }
 });
@@ -563,30 +799,91 @@ app.post('/inventario/equipos/guardar', async (req, res) => {
 app.post('/inventario/equipos/actualizar', async (req, res) => {
     if (!req.session.loggedin) return res.redirect('/');
 
-    const { id_equipo, serie, estado, id_colaborador } = req.body;
+    const { 
+        id_equipo, serie, estado, id_colaborador,
+        // Especificaciones
+        procesador, velocidad_procesador, memoria_ram, tipo_memoria, slots_memoria,
+        disco_duro, tipo_disco, capacidad_disco, tarjeta_grafica, vram,
+        sistema_operativo, arquitectura_os, version_os, office_version, antivirus,
+        fecha_instalacion_os, observaciones_tecnicas
+    } = req.body;
 
     try {
-        // Nueva oficina
         const [datosCol] = await db.query(`
             SELECT d.nombre_dependencia 
             FROM colaboradores c
             JOIN dependencias d ON c.id_dependencia = d.id_dependencia
-            WHERE c.id_colaborador = ?`, [id_colaborador]);
+            WHERE c.id_colaborador = ?
+        `, [id_colaborador]);
 
         const nuevaOficina = datosCol[0].nombre_dependencia.toUpperCase();
 
         // Actualizar equipo
-        const sql = `
+        await db.query(`
             UPDATE equipos 
             SET serie = ?, estado = ?, id_colaborador = ?, area_departamento = ?
             WHERE id_equipo = ?
-        `;
-
-        await db.query(sql, [serie.toUpperCase(), estado, id_colaborador, nuevaOficina, id_equipo]);
+        `, [serie.toUpperCase(), estado, id_colaborador, nuevaOficina, id_equipo]);
         
+        // 🔥 Actualizar o insertar especificaciones
+        await db.query(`
+            INSERT INTO especificaciones_equipos 
+            (id_equipo, procesador, velocidad_procesador, memoria_ram, tipo_memoria, slots_memoria,
+             disco_duro, tipo_disco, capacidad_disco, tarjeta_grafica, vram,
+             sistema_operativo, arquitectura_os, version_os, office_version, antivirus,
+             fecha_instalacion_os, observaciones_tecnicas) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE
+            procesador = VALUES(procesador),
+            velocidad_procesador = VALUES(velocidad_procesador),
+            memoria_ram = VALUES(memoria_ram),
+            tipo_memoria = VALUES(tipo_memoria),
+            slots_memoria = VALUES(slots_memoria),
+            disco_duro = VALUES(disco_duro),
+            tipo_disco = VALUES(tipo_disco),
+            capacidad_disco = VALUES(capacidad_disco),
+            tarjeta_grafica = VALUES(tarjeta_grafica),
+            vram = VALUES(vram),
+            sistema_operativo = VALUES(sistema_operativo),
+            arquitectura_os = VALUES(arquitectura_os),
+            version_os = VALUES(version_os),
+            office_version = VALUES(office_version),
+            antivirus = VALUES(antivirus),
+            fecha_instalacion_os = VALUES(fecha_instalacion_os),
+            observaciones_tecnicas = VALUES(observaciones_tecnicas)
+        `, [
+            id_equipo, 
+            procesador || null, velocidad_procesador || null, memoria_ram || null, tipo_memoria || null, slots_memoria || null,
+            disco_duro || null, tipo_disco || null, capacidad_disco || null, tarjeta_grafica || null, vram || null,
+            sistema_operativo || null, arquitectura_os || null, version_os || null, office_version || null, antivirus || null,
+            fecha_instalacion_os || null, observaciones_tecnicas || null
+        ]);
+        
+        req.flash('success', '✅ Equipo actualizado correctamente');
         res.redirect('/inventario/equipos');
+        
     } catch (error) {
-        res.status(500).send("Error al actualizar: " + error.message);
+        console.error(error);
+        req.flash('error', 'Error al actualizar: ' + error.message);
+        res.redirect('/inventario/equipos');
+    }
+});
+
+
+// Ruta para obtener especificaciones de un equipo (API)
+// API para obtener especificaciones de un equipo
+app.get('/api/equipo/:id/especificaciones', async (req, res) => {
+    if (!req.session.loggedin) return res.status(401).json({ error: 'No autorizado' });
+    
+    try {
+        const [especificaciones] = await db.query(`
+            SELECT * FROM especificaciones_equipos WHERE id_equipo = ?
+        `, [req.params.id]);
+        
+        res.json(especificaciones[0] || {});
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Error al cargar especificaciones' });
     }
 });
 

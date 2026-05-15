@@ -10,12 +10,6 @@
         </div>
     </header>
 
-    
-
-    <div class="row g-4">
-
-        <!-- Para el buscador universal -->
-
     <div class="mb-3">
         <div class="input-group">
             <span class="input-group-text bg-white border-end-0 rounded-pill-start">
@@ -25,22 +19,17 @@
                     placeholder="Buscar por serie, código, responsable, oficina o estado...">
         </div>
     </div>
-        
+    
+    <div class="row g-4">
         <!-- Formulario de registro -->
         <div class="col-xl-4 col-lg-5">
             <div class="modern-card shadow-sm bg-white p-4" style="border-radius: 20px;">
                 <form action="/inventario/equipos/guardar" method="POST" id="formEquipo">
                     <div class="mb-3">
                         <label class="form-label-custom">1. Tipo de Equipo</label>
-
-<!-- Depuración: Ver qué datos llegan -->
-<div style="display: none;">
-    <%- JSON.stringify(tipos) %>
-</div>
-
                         <select name="id_tipo" id="id_tipo" class="form-select input-modern" required>
                             <option value="">Seleccione tipo...</option>
-                             <% tipos.forEach(t => { %>
+                            <% tipos.forEach(t => { %>
                                 <option value="<%= t.id_tipo %>">
                                     <%= t.nombre_tipo %> (<%= t.prefijo %>)
                                 </option>
@@ -51,7 +40,7 @@
                     <div class="mb-3">
                         <label class="form-label-custom">2. Marca</label>
                         <select name="id_marca" id="id_marca" class="form-select input-modern" required disabled>
-                            <option value="">Selecciones marca...</option>
+                            <option value="">Primero seleccione tipo...</option>
                             <% marcas.forEach(m => { %>
                                 <option value="<%= m.id_marca %>"><%= m.nombre_marca %></option>
                             <% }) %>
@@ -61,7 +50,7 @@
                     <div class="mb-3">
                         <label class="form-label-custom">3. Modelo</label>
                         <select name="id_modelo" id="id_modelo" class="form-select input-modern" required disabled>
-                            <option value="">Seleccione modelo...</option>
+                            <option value="">Seleccione marca...</option>
                         </select>
                     </div>
 
@@ -102,15 +91,176 @@
                         </div>
                     </div>
 
-                    <button type="submit" class="btn btn-primary w-100 rounded-pill py-3 fw-bold shadow-sm">
+                    <!-- Especificaciones Técnicas (mejorado) -->
+                    <div class="card border-0 shadow-sm mt-3" id="panelEspecificaciones" style="display: none;">
+                        <div class="card-header bg-primary text-white">
+                            <h6 class="mb-0">
+                                <i class="fa-solid fa-microchip me-2"></i>Especificaciones Técnicas
+                            </h6>
+                        </div>
+                        <div class="card-body p-3">
+                            <!-- Fila 1: Procesador -->
+                            <div class="row mb-2">
+                                <div class="col-md-6">
+                                    <label class="small fw-bold text-primary">Procesador</label>
+                                    <input type="text" name="procesador" class="form-control form-control-sm" placeholder="Ej: Intel Core i5-11400">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="small fw-bold text-primary">Velocidad</label>
+                                    <input type="text" name="velocidad_procesador" class="form-control form-control-sm" placeholder="Ej: 2.7GHz / 4.4GHz Turbo">
+                                </div>
+                            </div>
+
+                            <!-- Fila 2: Memoria RAM -->
+                            <div class="row mb-2">
+                                <div class="col-md-4">
+                                    <label class="small fw-bold text-primary">Memoria RAM</label>
+                                    <div class="input-group input-group-sm">
+                                        <input type="text" name="memoria_ram" class="form-control" placeholder="Ej: 16GB">
+                                        <span class="input-group-text">GB</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="small fw-bold text-primary">Tipo Memoria</label>
+                                    <select name="tipo_memoria" class="form-select form-select-sm">
+                                        <option value="">Seleccione</option>
+                                        <option value="DDR3">DDR3</option>
+                                        <option value="DDR4">DDR4</option>
+                                        <option value="DDR5">DDR5</option>
+                                        <option value="LPDDR4">LPDDR4</option>
+                                        <option value="LPDDR5">LPDDR5</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="small fw-bold text-primary">Slots</label>
+                                    <input type="number" name="slots_memoria" class="form-control form-control-sm" placeholder="Ej: 2 / 4">
+                                </div>
+                            </div>
+
+                            <!-- Fila 3: Almacenamiento -->
+                            <div class="row mb-2">
+                                <div class="col-md-12">
+                                    <label class="small fw-bold text-primary">Almacenamiento</label>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <select name="tipo_disco" class="form-select form-select-sm mb-1">
+                                                <option value="">Tipo de disco</option>
+                                                <option value="SSD M.2">SSD M.2</option>
+                                                <option value="SSD SATA">SSD SATA</option>
+                                                <option value="HDD">HDD</option>
+                                                <option value="NVMe">NVMe</option>
+                                                <option value="SSHD">SSHD</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="input-group input-group-sm">
+                                                <input type="text" name="capacidad_disco" class="form-control" placeholder="Ej: 512GB / 1TB">
+                                                <span class="input-group-text">capacidad</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <small class="text-muted">Ejemplo: SSD M.2 - 512GB</small>
+                                </div>
+                            </div>
+
+                            <!-- Fila 4: Tarjeta Gráfica -->
+                            <div class="row mb-2">
+                                <div class="col-md-8">
+                                    <label class="small fw-bold text-primary">Tarjeta Gráfica</label>
+                                    <input type="text" name="tarjeta_grafica" class="form-control form-control-sm" placeholder="Ej: NVIDIA GeForce GTX 1650">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="small fw-bold text-primary">VRAM</label>
+                                    <select name="vram" class="form-select form-select-sm">
+                                        <option value="">Seleccione</option>
+                                        <option value="2GB">2GB</option>
+                                        <option value="4GB">4GB</option>
+                                        <option value="6GB">6GB</option>
+                                        <option value="8GB">8GB</option>
+                                        <option value="12GB">12GB</option>
+                                        <option value="16GB">16GB</option>
+                                        <option value="Integrada">Integrada</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Fila 5: Sistema Operativo -->
+                            <div class="row mb-2">
+                                <div class="col-md-5">
+                                    <label class="small fw-bold text-primary">Sistema Operativo</label>
+                                    <select name="sistema_operativo" class="form-select form-select-sm">
+                                        <option value="">Seleccione SO</option>
+                                        <option value="Windows 10 Pro">Windows 10 Pro</option>
+                                        <option value="Windows 11 Pro">Windows 11 Pro</option>
+                                        <option value="Windows 10 Home">Windows 10 Home</option>
+                                        <option value="Windows 11 Home">Windows 11 Home</option>
+                                        <option value="Linux">Linux</option>
+                                        <option value="macOS">macOS</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="small fw-bold text-primary">Arquitectura</label>
+                                    <select name="arquitectura_os" class="form-select form-select-sm">
+                                        <option value="">Seleccione</option>
+                                        <option value="32 bits">32 bits</option>
+                                        <option value="64 bits">64 bits</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="small fw-bold text-primary">Versión / Build</label>
+                                    <input type="text" name="version_os" class="form-control form-control-sm" placeholder="Ej: 22H2">
+                                </div>
+                            </div>
+
+                            <!-- Fila 6: Software Adicional -->
+                            <div class="row mb-2">
+                                <div class="col-md-6">
+                                    <label class="small fw-bold text-primary">Microsoft Office</label>
+                                    <select name="office_version" class="form-select form-select-sm">
+                                        <option value="">Seleccione</option>
+                                        <option value="Office 2016">Office 2016</option>
+                                        <option value="Office 2019">Office 2019</option>
+                                        <option value="Office 2021">Office 2021</option>
+                                        <option value="Microsoft 365">Microsoft 365</option>
+                                        <option value="LibreOffice">LibreOffice</option>
+                                        <option value="Sin Office">Sin Office</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="small fw-bold text-primary">Antivirus</label>
+                                    <select name="antivirus" class="form-select form-select-sm">
+                                        <option value="">Seleccione</option>
+                                        <option value="Windows Defender">Windows Defender</option>
+                                        <option value="ESET">ESET</option>
+                                        <option value="Kaspersky">Kaspersky</option>
+                                        <option value="McAfee">McAfee</option>
+                                        <option value="Sin antivirus">Sin antivirus</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Fila 7: Fechas y Observaciones -->
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <label class="small fw-bold text-primary">Fecha Instalación OS</label>
+                                    <input type="date" name="fecha_instalacion_os" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-md-8">
+                                    <label class="small fw-bold text-primary">Observaciones</label>
+                                    <input type="text" name="observaciones_tecnicas" class="form-control form-control-sm" placeholder="Ej: Notebook personal, equipo de escritorio, etc.">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 rounded-pill py-3 fw-bold shadow-sm mt-3">
                         <i class="fa-solid fa-save me-2"></i>Registrar Equipo
                     </button>
                 </form>
             </div>
         </div>
 
-
-        <!-- Tabla de los equipos registrados -->
+        <!-- Tabla de equipos registrados -->
         <div class="col-xl-8 col-lg-7">
             <div class="modern-card bg-white h-100 shadow-sm" style="border-radius: 20px; overflow: hidden;">
                 <div class="table-responsive">
@@ -148,7 +298,6 @@
                                         </span>
                                     </td>
                                     <td>
-                                        <!-- BOTÓN DE EDITAR -->
                                         <button class="btn btn-sm btn-outline-primary rounded-pill shadow-sm btn-editar" 
                                                 data-equipo='<%= JSON.stringify(eq) %>'>
                                             <i class="fa-solid fa-pen-to-square"></i>
@@ -162,16 +311,12 @@
             </div>
         </div>
     </div>
-
-
-
-    
 </div>
 
-<!-- MODAL DE EDICIÓN (Ubicación) -->
+<!-- MODAL DE EDICIÓN -->
 <div class="modal fade" id="modalEditar" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content" style="border-radius: 25px; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content" style="border-radius: 25px; border: none;">
             <div class="modal-header border-0 pt-4 px-4">
                 <h5 class="modal-title fw-bold text-secondary">
                     <i class="fa-solid fa-pen-to-square me-2 text-primary"></i>
@@ -183,28 +328,125 @@
                 <div class="modal-body px-4">
                     <input type="hidden" name="id_equipo" id="edit_id_equipo">
                     
-                    <div class="mb-3">
-                        <label class="form-label fw-bold small text-muted">SERIE (S/N)</label>
-                        <input type="text" name="serie" id="edit_serie" class="form-control input-modern text-uppercase" required>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold small text-muted">SERIE (S/N)</label>
+                            <input type="text" name="serie" id="edit_serie" class="form-control" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold small text-muted">ESTADO</label>
+                            <select name="estado" id="edit_estado" class="form-select">
+                                <option value="Operativo">Operativo</option>
+                                <option value="Reserva">Reserva</option>
+                                <option value="En Reparacion">En Reparación</option>
+                                <option value="De Baja">De Baja</option>
+                            </select>
+                        </div>
+                        <div class="col-md-12 mb-3">
+                            <label class="form-label fw-bold small text-muted">RESPONSABLE</label>
+                            <select name="id_colaborador" id="edit_id_colaborador" class="form-select" required>
+                                <% colaboradores.forEach(c => { %>
+                                    <option value="<%= c.id_colaborador %>"><%= c.nombre_completo %></option>
+                                <% }) %>
+                            </select>
+                        </div>
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label fw-bold small text-muted">ESTADO DEL ACTIVO</label>
-                        <select name="estado" id="edit_estado" class="form-select input-modern">
-                            <option value="Operativo">Operativo</option>
-                            <option value="Reserva">Reserva</option>
-                            <option value="En Reparacion">En Reparación</option>
-                            <option value="De Baja">De Baja</option>
-                        </select>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-bold small text-muted">REASIGNAR RESPONSABLE</label>
-                        <select name="id_colaborador" id="edit_id_colaborador" class="form-select input-modern" required>
-                            <% colaboradores.forEach(c => { %>
-                                <option value="<%= c.id_colaborador %>"><%= c.nombre_completo %></option>
-                            <% }) %>
-                        </select>
+                    <!-- Especificaciones Técnicas en Modal -->
+                    <div class="card border-0 bg-light mt-2">
+                        <div class="card-header bg-primary text-white">
+                            <h6 class="mb-0"><i class="fa-solid fa-microchip me-2"></i>Especificaciones Técnicas</h6>
+                        </div>
+                        <div class="card-body p-3">
+                            <div class="row mb-2">
+                                <div class="col-md-6">
+                                    <label class="small fw-bold">Procesador</label>
+                                    <input type="text" name="procesador" id="edit_procesador" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="small fw-bold">Velocidad</label>
+                                    <input type="text" name="velocidad_procesador" id="edit_velocidad_procesador" class="form-control form-control-sm">
+                                </div>
+                            </div>
+                            <div class="row mb-2">
+                                <div class="col-md-4">
+                                    <label class="small fw-bold">Memoria RAM</label>
+                                    <input type="text" name="memoria_ram" id="edit_memoria_ram" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="small fw-bold">Tipo Memoria</label>
+                                    <input type="text" name="tipo_memoria" id="edit_tipo_memoria" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="small fw-bold">Slots</label>
+                                    <input type="number" name="slots_memoria" id="edit_slots_memoria" class="form-control form-control-sm">
+                                </div>
+                            </div>
+                            <div class="row mb-2">
+                                <div class="col-md-6">
+                                    <label class="small fw-bold">Tipo Disco</label>
+                                    <select name="tipo_disco" id="edit_tipo_disco" class="form-select form-select-sm">
+                                        <option value="">Seleccione</option>
+                                        <option value="SSD M.2">SSD M.2</option>
+                                        <option value="SSD SATA">SSD SATA</option>
+                                        <option value="HDD">HDD</option>
+                                        <option value="NVMe">NVMe</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="small fw-bold">Capacidad Disco</label>
+                                    <input type="text" name="capacidad_disco" id="edit_capacidad_disco" class="form-control form-control-sm">
+                                </div>
+                            </div>
+                            <div class="row mb-2">
+                                <div class="col-md-8">
+                                    <label class="small fw-bold">Tarjeta Gráfica</label>
+                                    <input type="text" name="tarjeta_grafica" id="edit_tarjeta_grafica" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="small fw-bold">VRAM</label>
+                                    <input type="text" name="vram" id="edit_vram" class="form-control form-control-sm">
+                                </div>
+                            </div>
+                            <div class="row mb-2">
+                                <div class="col-md-5">
+                                    <label class="small fw-bold">Sistema Operativo</label>
+                                    <input type="text" name="sistema_operativo" id="edit_sistema_operativo" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="small fw-bold">Arquitectura</label>
+                                    <select name="arquitectura_os" id="edit_arquitectura_os" class="form-select form-select-sm">
+                                        <option value="">Seleccione</option>
+                                        <option value="32 bits">32 bits</option>
+                                        <option value="64 bits">64 bits</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="small fw-bold">Versión</label>
+                                    <input type="text" name="version_os" id="edit_version_os" class="form-control form-control-sm">
+                                </div>
+                            </div>
+                            <div class="row mb-2">
+                                <div class="col-md-6">
+                                    <label class="small fw-bold">Office</label>
+                                    <input type="text" name="office_version" id="edit_office_version" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="small fw-bold">Antivirus</label>
+                                    <input type="text" name="antivirus" id="edit_antivirus" class="form-control form-control-sm">
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <label class="small fw-bold">Fecha Instalación OS</label>
+                                    <input type="date" name="fecha_instalacion_os" id="edit_fecha_instalacion_os" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-md-8">
+                                    <label class="small fw-bold">Observaciones</label>
+                                    <input type="text" name="observaciones_tecnicas" id="edit_observaciones_tecnicas" class="form-control form-control-sm">
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer border-0 pb-4 px-4">
@@ -217,30 +459,7 @@
 </div>
 
 <script>
-    // Para el Botón de edición
-    document.addEventListener('click', function (event) {
-        
-        const btn = event.target.closest('.btn-editar');
-        
-        if (btn) {
-            try {
-                const eq = JSON.parse(btn.getAttribute('data-equipo'));
-
-                document.getElementById('edit_id_equipo').value = eq.id_equipo;
-                document.getElementById('edit_codigo_inf').innerText = eq.codigo_informatico;
-                document.getElementById('edit_serie').value = eq.serie;
-                document.getElementById('edit_estado').value = eq.estado;
-                document.getElementById('edit_id_colaborador').value = eq.id_colaborador;
-
-                const modalElement = document.getElementById('modalEditar');
-                const modalEdit = new bootstrap.Modal(modalElement);
-                modalEdit.show();
-            } catch (error) {
-                console.error("Error al procesar los datos del equipo:", error);
-            }
-        }
-    });
-
+    // Selectores de tipo, marca y modelo
     const selectTipo = document.getElementById('id_tipo');
     const selectMarca = document.getElementById('id_marca');
     const selectModelo = document.getElementById('id_modelo');
@@ -252,7 +471,7 @@
             selectMarca.disabled = true;
             selectModelo.disabled = true;
             selectMarca.value = "";
-            selectModelo.value = "";
+            selectModelo.innerHTML = '<option value="">Seleccione modelo...</option>';
         }
     });
 
@@ -261,6 +480,7 @@
         const idMarca = selectMarca.value;
         if (idTipo && idMarca) {
             selectModelo.innerHTML = '<option value="">Cargando...</option>';
+            selectModelo.disabled = true;
             try {
                 const response = await fetch(`/api/modelos/${idTipo}/${idMarca}`);
                 const modelos = await response.json();
@@ -274,29 +494,82 @@
                 selectModelo.disabled = false;
             } catch (error) {
                 console.error('Error:', error);
+                selectModelo.innerHTML = '<option value="">Error al cargar modelos</option>';
             }
         }
     });
 
-    
-    // Código para ejecutar el buscador
-    document.getElementById('buscadorUniversal').addEventListener('keyup', function() {
-    const valor = this.value.toLowerCase();
-    const filas = document.querySelectorAll('#tablaEquipos tbody tr');
-
-    filas.forEach(fila => {
-        const textoFila = fila.innerText.toLowerCase();
+    // Panel de especificaciones
+    document.addEventListener('DOMContentLoaded', function() {
+        const tipoEquipoSelect = document.getElementById('id_tipo');
+        const panelEspecificaciones = document.getElementById('panelEspecificaciones');
         
-        if (textoFila.includes(valor)) {
-            fila.style.display = '';
-            fila.style.animation = 'fadeIn 0.3s';
-        } else {
-            fila.style.display = 'none'; 
+        if (tipoEquipoSelect) {
+            tipoEquipoSelect.addEventListener('change', function() {
+                const selectedOption = this.options[this.selectedIndex];
+                const textoOpcion = selectedOption ? selectedOption.text : '';
+                
+                if (textoOpcion.includes('Desktop') || textoOpcion.includes('Laptop')) {
+                    panelEspecificaciones.style.display = 'block';
+                } else {
+                    panelEspecificaciones.style.display = 'none';
+                }
+            });
         }
     });
-});
 
+    // Buscador
+    document.getElementById('buscadorUniversal').addEventListener('keyup', function() {
+        const valor = this.value.toLowerCase();
+        const filas = document.querySelectorAll('#tablaEquipos tbody tr');
+        filas.forEach(fila => {
+            fila.style.display = fila.innerText.toLowerCase().includes(valor) ? '' : 'none';
+        });
+    });
 
+    // Botón editar
+    document.addEventListener('click', async function (event) {
+        const btn = event.target.closest('.btn-editar');
+        if (btn) {
+            try {
+                const eq = JSON.parse(btn.getAttribute('data-equipo'));
+                const id_equipo = eq.id_equipo;
+
+                document.getElementById('edit_id_equipo').value = eq.id_equipo;
+                document.getElementById('edit_codigo_inf').innerText = eq.codigo_informatico;
+                document.getElementById('edit_serie').value = eq.serie;
+                document.getElementById('edit_estado').value = eq.estado;
+                document.getElementById('edit_id_colaborador').value = eq.id_colaborador;
+
+                const response = await fetch(`/api/equipo/${id_equipo}/especificaciones`);
+                const especificaciones = await response.json();
+                
+                if (especificaciones) {
+                    document.getElementById('edit_procesador').value = especificaciones.procesador || '';
+                    document.getElementById('edit_velocidad_procesador').value = especificaciones.velocidad_procesador || '';
+                    document.getElementById('edit_memoria_ram').value = especificaciones.memoria_ram || '';
+                    document.getElementById('edit_tipo_memoria').value = especificaciones.tipo_memoria || '';
+                    document.getElementById('edit_slots_memoria').value = especificaciones.slots_memoria || '';
+                    document.getElementById('edit_tipo_disco').value = especificaciones.tipo_disco || '';
+                    document.getElementById('edit_capacidad_disco').value = especificaciones.capacidad_disco || '';
+                    document.getElementById('edit_tarjeta_grafica').value = especificaciones.tarjeta_grafica || '';
+                    document.getElementById('edit_vram').value = especificaciones.vram || '';
+                    document.getElementById('edit_sistema_operativo').value = especificaciones.sistema_operativo || '';
+                    document.getElementById('edit_arquitectura_os').value = especificaciones.arquitectura_os || '';
+                    document.getElementById('edit_version_os').value = especificaciones.version_os || '';
+                    document.getElementById('edit_office_version').value = especificaciones.office_version || '';
+                    document.getElementById('edit_antivirus').value = especificaciones.antivirus || '';
+                    document.getElementById('edit_fecha_instalacion_os').value = especificaciones.fecha_instalacion_os ? new Date(especificaciones.fecha_instalacion_os).toISOString().split('T')[0] : '';
+                    document.getElementById('edit_observaciones_tecnicas').value = especificaciones.observaciones_tecnicas || '';
+                }
+
+                const modalEdit = new bootstrap.Modal(document.getElementById('modalEditar'));
+                modalEdit.show();
+            } catch (error) {
+                console.error("Error:", error);
+            }
+        }
+    });
 </script>
 
 <%- include('partials/footer') %>

@@ -349,21 +349,59 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
+
 // ============================================
 // DESCARGA DE EXCEL
 // ============================================
 function descargarExcel(tipo) {
     let filtro = '';
+    let url = '';
+    
     if (tipo === 'repuestos') {
-        const filtroRepuesto = document.getElementById('filtroRepuesto');
-        filtro = filtroRepuesto ? filtroRepuesto.value : '';
+        const select = document.getElementById('filtroRepuesto');
+        filtro = select ? select.value : 'todos';
+        url = `/reporte/repuestos/excel?filtro=${filtro}`;
     } else {
-        const filtroEquipo = document.getElementById('filtroEquipo');
-        filtro = filtroEquipo ? filtroEquipo.value : '';
+        const select = document.getElementById('filtroEquipo');
+        filtro = select ? select.value : 'todos';
+        url = `/reporte/equipos/excel?filtro=${filtro}`;
     }
-    console.log('Generando reporte de ' + tipo + ' con filtro: ' + filtro);
-    alert('Preparando archivo Excel de ' + tipo.toUpperCase() + ' (' + filtro + ')...');
+    
+    // Crear un enlace temporal para descargar
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = '';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Mostrar notificación
+    const mensaje = `Generando reporte de ${tipo.toUpperCase()}...`;
+    console.log(mensaje);
+    
+    // Opcional: Mostrar un pequeño toast de notificación
+    const toast = document.createElement('div');
+    toast.innerHTML = `<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+        <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header bg-success text-white">
+                <i class="fa-solid fa-file-excel me-2"></i>
+                <strong class="me-auto">Reporte Excel</strong>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body">
+                <i class="fa-solid fa-spinner fa-spin me-2"></i>
+                Generando ${tipo === 'repuestos' ? 'repuestos' : 'equipos'}...
+            </div>
+        </div>
+    </div>`;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.remove();
+    }, 3000);
 }
+
+
 </script>
 
 <%- include('partials/footer') %>
