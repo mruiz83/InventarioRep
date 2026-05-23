@@ -33,9 +33,44 @@
             <i class="fa-solid fa-laptop-medical me-2"></i> Inventario Equipos
         </a>
 
-        <a href="/kardex" class="nav-link <%= (typeof pagina !== 'undefined' && pagina === 'kardex') ? 'active' : '' %>">
-            <i class="fa-solid fa-clipboard-list me-2"></i> Órdenes de Trabajo
-        </a>
+        
+
+<!-- En sidebar.ejs - Submenú de órdenes unificado -->
+<li class="nav-item">
+    <a class="nav-link" href="#" id="menuOrdenes" data-bs-toggle="collapse" data-bs-target="#submenuOrdenes" aria-expanded="false">
+        <i class="fa-solid fa-clipboard-list me-2"></i> Órdenes de Trabajo
+        <i class="fa-solid fa-chevron-down float-end mt-1"></i>
+    </a>
+    <div class="collapse" id="submenuOrdenes">
+        <ul class="nav flex-column ms-3">
+            <!-- PARA TÉCNICOS - Órdenes asignadas en taller -->
+            <li class="nav-item">
+                <a class="nav-link <%= pagina === 'ordenes_taller' ? 'active' : '' %>" href="/ordenes/taller">
+                    <i class="fa-solid fa-industry me-2"></i> Órdenes en Taller
+                </a>
+            </li>
+            <!-- PARA ADMIN/TÉCNICO - Crear nuevas órdenes -->
+            <li class="nav-item">
+                <a class="nav-link <%= pagina === 'ordenes_fuera' ? 'active' : '' %>" href="/ordenes/fuera/nueva?tipo=fuera_taller">
+                    <i class="fa-solid fa-building me-2"></i> Fuera del Taller
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link <%= pagina === 'ordenes_remota' ? 'active' : '' %>" href="/ordenes/fuera/nueva?tipo=remota">
+                    <i class="fa-solid fa-laptop me-2"></i> Atención Remota
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link <%= pagina === 'ordenes_mantenimiento' ? 'active' : '' %>" href="/ordenes/mantenimiento/nueva">
+                    <i class="fa-solid fa-calendar-week me-2"></i> Mantenimiento Planificado
+                </a>
+            </li>
+        </ul>
+    </div>
+</li>
+
+        
+
 
         <div class="px-3 mt-4 mb-2">
             <small class="text-white-50 fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 1px;">Configuración</small>

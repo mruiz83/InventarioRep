@@ -1,0 +1,151 @@
+<%- include('partials/header') %>
+<%- include('partials/sidebar') %>
+
+<div class="main-content">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="m-0 text-secondary fw-bold">
+                <i class="fa-solid fa-tasks me-2 text-primary"></i>Mis Órdenes Activas
+            </h4>
+            <p class="text-muted small mb-0">Órdenes asignadas pendientes o en proceso</p>
+        </div>
+        <div>
+            <a href="/mis-ordenes/historial" class="btn btn-outline-secondary rounded-pill px-4">
+                <i class="fa-solid fa-clock-rotate-left me-2"></i>Ver Historial
+            </a>
+        </div>
+    </div>
+
+    <!-- Tarjetas de resumen -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm text-center">
+                <div class="card-body py-3">
+                    <h5 class="text-warning mb-0">
+                        <%= ordenes.filter(o => o.estado === 'Pendiente').length %>
+                    </h5>
+                    <small class="text-muted">Pendientes</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm text-center">
+                <div class="card-body py-3">
+                    <h5 class="text-info mb-0">
+                        <%= ordenes.filter(o => o.estado === 'En Proceso').length %>
+                    </h5>
+                    <small class="text-muted">En Proceso</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm text-center">
+                <div class="card-body py-3">
+                    <h5 class="text-primary mb-0">
+                        <%= ordenes.length %>
+                    </h5>
+                    <small class="text-muted">Total Activas</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Listado de órdenes -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white py-3">
+            <div class="row">
+                <div class="col-md-4">
+                    <input type="text" id="buscador" class="form-control form-control-sm" placeholder="Buscar por orden, equipo...">
+                </div>
+                <div class="col-md-3">
+                    <select id="filtroEstado" class="form-select form-select-sm">
+                        <option value="todos">Todos los estados</option>
+                        <option value="Pendiente">Pendiente</option>
+                        <option value="En Proceso">En Proceso</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="list-group list-group-flush">
+            <% if (ordenes.length > 0) { %>
+                <% ordenes.forEach(orden => { %>
+                    <div class="list-group-item list-group-item-action fila-orden" data-estado="<%= orden.estado %>">
+                        <div class="row align-items-center">
+                            <div class="col-md-2">
+                                <span class="fw-bold text-primary">#<%= orden.numero_orden %></span>
+                                <br>
+                                <small class="text-muted"><%= new Date(orden.fecha_apertura).toLocaleDateString() %></small>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="fw-bold"><%= orden.codigo_informatico || 'Mantenimiento' %></div>
+                                <small class="text-muted"><%= orden.marca_modelo || '' %></small>
+                            </div>
+                            <div class="col-md-2">
+                                <% if (orden.tipo_orden === 'taller') { %>
+                                    <span class="badge bg-primary">🏭 Taller</span>
+                                <% } else if (orden.tipo_orden === 'fuera_taller') { %>
+                                    <span class="badge bg-info">📍 Fuera Taller</span>
+                                <% } else if (orden.tipo_orden === 'remota') { %>
+                                    <span class="badge bg-secondary">💻 Remota</span>
+                                <% } else { %>
+                                    <span class="badge bg-warning text-dark">🔧 Mantenimiento</span>
+                                <% } %>
+                            </div>
+                            <div class="col-md-2">
+                                <% if (orden.estado === 'Pendiente') { %>
+                                    <span class="badge bg-warning text-dark">⏳ Pendiente</span>
+                                <% } else { %>
+                                    <span class="badge bg-info">🔄 En Proceso</span>
+                                <% } %>
+                            </div>
+                            <div class="col-md-3 text-end">
+                                <a href="/mis-ordenes/<%= orden.id_orden %>" class="btn btn-sm btn-primary rounded-pill px-3">
+                                    <i class="fa-solid fa-eye me-1"></i> Ver / Atender
+                                </a>
+                            </div>
+                        </div>
+                        <% if (orden.falla_reportada) { %>
+                            <div class="row mt-2">
+                                <div class="col-12">
+                                    <small class="text-muted">Falla: <strong><%= orden.falla_reportada.substring(0, 100) %>...</strong></small>
+                                </div>
+                            </div>
+                        <% } %>
+                    </div>
+                <% }) %>
+            <% } else { %>
+                <div class="text-center py-5">
+                    <i class="fa-solid fa-check-circle fa-3x text-success mb-3"></i>
+                    <h5 class="text-muted">No tienes órdenes pendientes</h5>
+                    <p class="small text-muted">¡Excelente! Todas tus órdenes están completadas.</p>
+                    <a href="/mis-ordenes/historial" class="btn btn-outline-primary rounded-pill mt-2">
+                        Ver historial de órdenes
+                    </a>
+                </div>
+            <% } %>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Filtros
+    const buscador = document.getElementById('buscador');
+    const filtroEstado = document.getElementById('filtroEstado');
+    const filas = document.querySelectorAll('.fila-orden');
+    
+    function aplicarFiltros() {
+        const busqueda = buscador.value.toLowerCase();
+        const estado = filtroEstado.value;
+        
+        filas.forEach(fila => {
+            const cumpleEstado = estado === 'todos' || fila.dataset.estado === estado;
+            const cumpleBusqueda = busqueda === '' || fila.innerText.toLowerCase().includes(busqueda);
+            fila.style.display = (cumpleEstado && cumpleBusqueda) ? '' : 'none';
+        });
+    }
+    
+    buscador.addEventListener('keyup', aplicarFiltros);
+    filtroEstado.addEventListener('change', aplicarFiltros);
+</script>
+
+<%- include('partials/footer') %>

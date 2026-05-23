@@ -1,0 +1,112 @@
+<%- include('partials/header') %>
+<%- include('partials/sidebar') %>
+
+<div class="main-content">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4 class="m-0 text-secondary fw-bold">
+            <% if (tipo === 'fuera_taller') { %>
+                <i class="fa-solid fa-building me-2 text-primary"></i>Nueva Orden - Fuera del Taller
+            <% } else { %>
+                <i class="fa-solid fa-laptop me-2 text-primary"></i>Nueva Orden - Atención Remota
+            <% } %>
+        </h4>
+        <a href="/dashboard" class="btn btn-secondary rounded-pill px-4">
+            <i class="fa-solid fa-arrow-left me-2"></i>Volver
+        </a>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-4">
+            <form action="/ordenes/fuera/guardar" method="POST">
+                <input type="hidden" name="tipo_orden" value="<%= tipo %>">
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Seleccionar Equipo</label>
+                        <select name="id_equipo" id="selectEquipo" class="form-select" required>
+                            <option value="">Buscar equipo...</option>
+                            <% equipos.forEach(e => { %>
+                                <option value="<%= e.id_equipo %>" 
+                                        data-colaborador="<%= e.nombre_completo || '' %>"
+                                        data-cargo="<%= e.cargo || '' %>"
+                                        data-dependencia="<%= e.nombre_dependencia || '' %>"
+                                        data-serie="<%= e.serie || '' %>"
+                                        data-marca="<%= e.marca_modelo || '' %>">
+                                    <%= e.codigo_informatico %> - <%= e.marca_modelo %>
+                                </option>
+                            <% }) %>
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Técnico Asignado</label>
+                        <select name="tecnico_asignado" class="form-select" required>
+                            <option value="">Seleccione técnico...</option>
+                            <% tecnicos.forEach(t => { %>
+                                <option value="<%= t.id_usuarios %>"><%= t.nombre %></option>
+                            <% }) %>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Información del equipo y colaborador -->
+                <div class="card bg-light mb-3">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <small class="text-muted">Colaborador:</small>
+                                <p id="infoColaborador" class="fw-bold mb-1">---</p>
+                                <small class="text-muted">Cargo:</small>
+                                <p id="infoCargo" class="mb-1">---</p>
+                            </div>
+                            <div class="col-md-6">
+                                <small class="text-muted">Ubicación:</small>
+                                <p id="infoUbicacion" class="fw-bold mb-1">---</p>
+                                <small class="text-muted">Serie:</small>
+                                <p id="infoSerie" class="mb-1">---</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Fecha de Atención</label>
+                        <input type="date" name="fecha_apertura" class="form-control" value="<%= new Date().toISOString().split('T')[0] %>" required>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Trabajo Realizado / Solución</label>
+                    <textarea name="trabajo_realizado" class="form-control" rows="4" placeholder="Describa el trabajo realizado, problemas encontrados y solución aplicada..." required></textarea>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Observaciones Adicionales</label>
+                    <textarea name="observaciones" class="form-control" rows="2" placeholder="Notas adicionales, recomendaciones..."></textarea>
+                </div>
+
+                <div class="text-end">
+                    <button type="submit" class="btn btn-primary rounded-pill px-4">
+                        <i class="fa-solid fa-save me-2"></i>Registrar Orden
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    const selectEquipo = document.getElementById('selectEquipo');
+    
+    selectEquipo.addEventListener('change', function() {
+        const selected = this.options[this.selectedIndex];
+        
+        document.getElementById('infoColaborador').innerText = selected.dataset.colaborador || 'No asignado';
+        document.getElementById('infoCargo').innerText = selected.dataset.cargo || '---';
+        document.getElementById('infoUbicacion').innerText = selected.dataset.dependencia || '---';
+        document.getElementById('infoSerie').innerText = selected.dataset.serie || '---';
+    });
+</script>
+
+<%- include('partials/footer') %>

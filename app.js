@@ -68,33 +68,110 @@ app.post('/auth/login', async (req, res) => {
     } catch (error) { res.status(500).send('Error en el servidor.'); }
 });
 
+
+// Ruta para mostrar el formulario de registro
+app.get('/registro', (req, res) => {
+    res.render('register', { messages: req.flash() });
+});
+
+// Ruta para procesar el registro
+app.post('/auth/registro', async (req, res) => {
+    const { nombre, usuario, password, confirm_password } = req.body;
+    
+    // Validaciones
+    if (!nombre || !usuario || !password) {
+        req.flash('error', 'Todos los campos son obligatorios');
+        return res.redirect('/registro');
+    }
+    
+    if (password !== confirm_password) {
+        req.flash('error', 'Las contraseñas no coinciden');
+        return res.redirect('/registro');
+    }
+    
+    if (password.length < 6) {
+        req.flash('error', 'La contraseña debe tener al menos 6 caracteres');
+        return res.redirect('/registro');
+    }
+    
+    try {
+        // Verificar si el usuario ya existe
+        const [existe] = await db.query(
+            'SELECT COUNT(*) as total FROM usuarios WHERE usuario = ?',
+            [usuario]
+        );
+        
+        if (existe[0].total > 0) {
+            req.flash('error', 'El nombre de usuario ya está registrado');
+            return res.redirect('/registro');
+        }
+        
+        // Obtener el rol por defecto (Técnico)
+        const [rolDefecto] = await db.query(
+            'SELECT id_rol FROM rol_usuarios WHERE nombre_rol = "Técnico"'
+        );
+        
+        const id_rol = rolDefecto.length > 0 ? rolDefecto[0].id_rol : 2;
+        
+        // Insertar nuevo usuario
+        await db.query(
+            'INSERT INTO usuarios (nombre, usuario, contraseña, id_rol) VALUES (?, ?, ?, ?)',
+            [nombre, usuario, password, id_rol]
+        );
+        
+        req.flash('success', '✅ Usuario registrado exitosamente. Ahora puede iniciar sesión.');
+        res.redirect('/');
+        
+    } catch (error) {
+        console.error("Error en registro:", error);
+        req.flash('error', 'Error al registrar usuario: ' + error.message);
+        res.redirect('/registro');
+    }
+});
+
+
 // Ruta para el dashboard corregida 05/06/2026
 app.get('/dashboard', async (req, res) => {
     if (!req.session.loggedin) return res.redirect('/');
     
     try {
         // ============================================
-        // 1. EQUIPOS Y ASIGNACIONES (CORREGIDO)
-        // ============================================
+        // 1. EQUIPOS POR ESTADO
         
         // Total de equipos registrados
         const [equipos] = await db.query('SELECT COUNT(*) as total FROM equipos');
         
-        // Equipos asignados (los que tienen un colaborador asignado)
-        const [asignados] = await db.query(`
+        // Equipos en buen estado (Operativo)
+        const [equiposBuenEstado] = await db.query(`
             SELECT COUNT(*) as total 
             FROM equipos 
-            WHERE id_colaborador IS NOT NULL
+            WHERE estado = 'Operativo'
         `);
         
-        // Total de colaboradores ACTIVOS
+        // Equipos en resguardo (Reserva)
+        const [equiposResguardo] = await db.query(`
+            SELECT COUNT(*) as total 
+            FROM equipos 
+            WHERE estado = 'Reserva'
+        `);
+        
+        // Equipos en reparación o baja
+        const [equiposOtros] = await db.query(`
+            SELECT COUNT(*) as total 
+            FROM equipos 
+            WHERE estado IN ('En Reparacion', 'De Baja')
+        `);
+        
+        // ============================================
+        // 2. COLABORADORES (se mantiene igual)
+        // ============================================
+        
         const [colaboradores] = await db.query(`
             SELECT COUNT(*) as total 
             FROM colaboradores 
             WHERE estado_laboral = 'Activo'
         `);
         
-        // Colaboradores que TIENEN equipo asignado (DISTINCT)
         const [colabConEquipo] = await db.query(`
             SELECT COUNT(DISTINCT id_colaborador) as total 
             FROM equipos 
@@ -102,7 +179,7 @@ app.get('/dashboard', async (req, res) => {
         `);
         
         // ============================================
-        // 2. STOCK DE REPUESTOS
+        // 3. STOCK DE REPUESTOS
         // ============================================
         
         const [stockCritico] = await db.query(`
@@ -141,7 +218,7 @@ app.get('/dashboard', async (req, res) => {
         `);
         
         // ============================================
-        // 3. ÓRDENES DE TRABAJO
+        // 4. ÓRDENES DE TRABAJO
         // ============================================
         
         const [ordenesPendientes] = await db.query(`
@@ -163,22 +240,24 @@ app.get('/dashboard', async (req, res) => {
         `);
 
         // ============================================
-        // 4. DEBUG (ver en consola del servidor)
+        // 5. DEBUG (ver en consola del servidor)
         // ============================================
         console.log('========== DASHBOARD DATA ==========');
         console.log('Total Equipos:', equipos[0].total);
-        console.log('Equipos Asignados:', asignados[0].total);
-        console.log('Equipos Sin Asignar:', equipos[0].total - asignados[0].total);
+        console.log('Equipos Buen Estado:', equiposBuenEstado[0].total);
+        console.log('Equipos en Resguardo:', equiposResguardo[0].total);
+        console.log('Equipos en Reparación/Baja:', equiposOtros[0].total);
         console.log('Total Colaboradores:', colaboradores[0].total);
         console.log('Colaboradores con Equipo:', colabConEquipo[0].total);
-        console.log('Colaboradores sin Equipo:', colaboradores[0].total - colabConEquipo[0].total);
         console.log('====================================');
 
         res.render('dashboard', {
             nombre: req.session.nombreReal,
             rol: req.session.rol,
             totalEquipos: equipos[0].total,
-            asignados: asignados[0].total,
+            equiposBuenEstado: equiposBuenEstado[0].total,
+            equiposResguardo: equiposResguardo[0].total,
+            equiposOtros: equiposOtros[0].total,
             totalColab: colaboradores[0].total,
             colabConEquipo: colabConEquipo[0].total,
             stockCritico: stockCritico[0].total,
@@ -196,7 +275,9 @@ app.get('/dashboard', async (req, res) => {
             nombre: req.session.nombreReal,
             rol: req.session.rol,
             totalEquipos: 0, 
-            asignados: 0, 
+            equiposBuenEstado: 0, 
+            equiposResguardo: 0,
+            equiposOtros: 0,
             totalColab: 0, 
             colabConEquipo: 0,
             stockCritico: 0,
@@ -450,6 +531,213 @@ app.get('/reporte/equipos/excel', async (req, res) => {
         res.status(500).send("Error al generar el reporte");
     }
 });
+
+
+
+// ============================================
+// ÓRDENES DE TRABAJO - TALLER
+// ============================================
+
+
+// Órdenes en Taller - SOLO las asignadas al técnico que inició sesión
+app.get('/ordenes/taller', async (req, res) => {
+    if (!req.session.loggedin) return res.redirect('/');
+    
+    try {
+        // Obtener órdenes de taller asignadas AL TÉCNICO QUE INICIÓ SESIÓN
+        const [ordenes] = await db.query(`
+            SELECT ot.*, 
+                   r.id_recepcion,
+                   r.falla_reportada,
+                   r.quien_entrega,
+                   r.accesorios,
+                   e.codigo_informatico,
+                   e.marca_modelo,
+                   e.serie,
+                   e.tipo_equipo,
+                   c.nombre_completo AS colaborador_nombre,
+                   c.cargo,
+                   d.nombre_dependencia
+            FROM ordenes_trabajo ot
+            JOIN recepcion_equipos r ON ot.id_orden_referencia = r.id_recepcion
+            JOIN equipos e ON r.id_equipo = e.id_equipo
+            LEFT JOIN colaboradores c ON ot.id_colaborador = c.id_colaborador
+            LEFT JOIN dependencias d ON c.id_dependencia = d.id_dependencia
+            WHERE ot.tipo_orden = 'taller' 
+              AND ot.tecnico_asignado = ?
+            ORDER BY 
+                CASE ot.estado 
+                    WHEN 'Pendiente' THEN 1 
+                    WHEN 'En Proceso' THEN 2 
+                    ELSE 3 
+                END,
+                ot.fecha_apertura DESC
+        `, [req.session.id_usuario]);
+        
+        const pendientes = ordenes.filter(o => o.estado === 'Pendiente').length;
+        const enProceso = ordenes.filter(o => o.estado === 'En Proceso').length;
+        const completadas = ordenes.filter(o => o.estado === 'Completado').length;
+        
+        res.render('ordenes_taller', {
+            nombre: req.session.nombreReal,
+            rol: req.session.rol,
+            ordenes: ordenes,
+            pendientes: pendientes,
+            enProceso: enProceso,
+            completadas: completadas,
+            pagina: 'ordenes_taller'
+        });
+    } catch (error) {
+        console.error("Error:", error);
+        req.flash('error', 'Error al cargar órdenes de taller');
+        res.redirect('/dashboard');
+    }
+});
+
+// ============================================
+// ÓRDENES FUERA DEL TALLER / REMOTAS (similares)
+// ============================================
+
+// Formulario para orden fuera del taller o remota
+app.get('/ordenes/fuera/nueva', async (req, res) => {
+    if (!req.session.loggedin) return res.redirect('/');
+    
+    try {
+        const [equipos] = await db.query(`
+            SELECT e.*, c.nombre_completo, c.cargo, d.nombre_dependencia
+            FROM equipos e
+            LEFT JOIN colaboradores c ON e.id_colaborador = c.id_colaborador
+            LEFT JOIN dependencias d ON c.id_dependencia = d.id_dependencia
+            ORDER BY e.codigo_informatico ASC
+        `);
+        
+        const [tecnicos] = await db.query(`SELECT id_usuarios, nombre FROM usuarios ORDER BY nombre`);
+        
+        res.render('orden_fuera_nueva', {
+            nombre: req.session.nombreReal,
+            rol: req.session.rol,
+            equipos: equipos,
+            tecnicos: tecnicos,
+            tipo: req.query.tipo || 'fuera_taller', // fuera_taller o remota
+            pagina: 'ordenes_fuera'
+        });
+    } catch (error) {
+        console.error(error);
+        req.flash('error', 'Error al cargar formulario');
+        res.redirect('/dashboard');
+    }
+});
+
+// Guardar orden fuera del taller o remota
+app.post('/ordenes/fuera/guardar', async (req, res) => {
+    if (!req.session.loggedin) return res.redirect('/');
+    
+    const { tipo_orden, id_equipo, tecnico_asignado, fecha_apertura, trabajo_realizado, observaciones } = req.body;
+    
+    try {
+        // Obtener datos del equipo
+        const [equipo] = await db.query(`SELECT id_colaborador FROM equipos WHERE id_equipo = ?`, [id_equipo]);
+        
+        const [lastOrder] = await db.query(`SELECT numero_orden FROM ordenes_trabajo ORDER BY id_orden DESC LIMIT 1`);
+        let newNumber = 1;
+        if (lastOrder.length > 0) {
+            const lastNum = parseInt(lastOrder[0].numero_orden.split('-')[1]);
+            newNumber = lastNum + 1;
+        }
+        const numero_orden = `OT-${newNumber.toString().padStart(5, '0')}`;
+        
+        await db.query(`
+            INSERT INTO ordenes_trabajo 
+            (numero_orden, tipo_orden, id_equipo, id_colaborador, tecnico_asignado, 
+             fecha_apertura, trabajo_realizado, observaciones, estado, id_usuario_registro) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Completado', ?)
+        `, [
+            numero_orden, tipo_orden, id_equipo, equipo[0]?.id_colaborador,
+            tecnico_asignado, fecha_apertura, trabajo_realizado, observaciones, req.session.id_usuario
+        ]);
+        
+        req.flash('success', `✅ Orden ${numero_orden} registrada exitosamente`);
+        res.redirect(`/ordenes/${tipo_orden === 'fuera_taller' ? 'fuera' : 'remota'}`);
+    } catch (error) {
+        console.error(error);
+        req.flash('error', 'Error al registrar la orden');
+        res.redirect(`/ordenes/${req.body.tipo_orden}/nueva`);
+    }
+});
+
+// ============================================
+// ÓRDENES DE MANTENIMIENTO (Múltiples equipos)
+// ============================================
+
+app.get('/ordenes/mantenimiento/nueva', async (req, res) => {
+    if (!req.session.loggedin) return res.redirect('/');
+    
+    try {
+        const [equipos] = await db.query(`
+            SELECT e.*, c.nombre_completo, d.nombre_dependencia
+            FROM equipos e
+            LEFT JOIN colaboradores c ON e.id_colaborador = c.id_colaborador
+            LEFT JOIN dependencias d ON c.id_dependencia = d.id_dependencia
+            ORDER BY e.codigo_informatico ASC
+        `);
+        
+        const [tecnicos] = await db.query(`SELECT id_usuarios, nombre FROM usuarios ORDER BY nombre`);
+        
+        res.render('orden_mantenimiento_nueva', {
+            nombre: req.session.nombreReal,
+            rol: req.session.rol,
+            equipos: equipos,
+            tecnicos: tecnicos,
+            pagina: 'ordenes_mantenimiento'
+        });
+    } catch (error) {
+        console.error(error);
+        req.flash('error', 'Error al cargar formulario');
+        res.redirect('/dashboard');
+    }
+});
+
+app.post('/ordenes/mantenimiento/guardar', async (req, res) => {
+    if (!req.session.loggedin) return res.redirect('/');
+    
+    const { equipos, tecnico_asignado, fecha_apertura, trabajo_realizado, observaciones } = req.body;
+    const listaEquipos = Array.isArray(equipos) ? equipos : [equipos];
+    
+    try {
+        const [lastOrder] = await db.query(`SELECT numero_orden FROM ordenes_trabajo ORDER BY id_orden DESC LIMIT 1`);
+        let newNumber = 1;
+        if (lastOrder.length > 0) {
+            const lastNum = parseInt(lastOrder[0].numero_orden.split('-')[1]);
+            newNumber = lastNum + 1;
+        }
+        const numero_orden = `OT-${newNumber.toString().padStart(5, '0')}`;
+        
+        // Insertar orden principal
+        const [result] = await db.query(`
+            INSERT INTO ordenes_trabajo 
+            (numero_orden, tipo_orden, tecnico_asignado, fecha_apertura, trabajo_realizado, observaciones, estado, id_usuario_registro) 
+            VALUES (?, 'mantenimiento', ?, ?, ?, ?, 'Completado', ?)
+        `, [numero_orden, tecnico_asignado, fecha_apertura, trabajo_realizado, observaciones, req.session.id_usuario]);
+        
+        const id_orden = result.insertId;
+        
+        // Insertar equipos asociados
+        for (const id_equipo of listaEquipos) {
+            await db.query(`
+                INSERT INTO ordenes_mantenimiento_equipos (id_orden, id_equipo, trabajo_realizado) 
+                VALUES (?, ?, ?)
+            `, [id_orden, id_equipo, trabajo_realizado]);
+        }
+        
+        req.flash('success', `✅ Orden de mantenimiento ${numero_orden} registrada con ${listaEquipos.length} equipo(s)`);
+        res.redirect('/ordenes/mantenimiento');
+    } catch (error) {
+        console.error(error);
+        req.flash('error', 'Error al registrar la orden');
+        res.redirect('/ordenes/mantenimiento/nueva');
+    }
+});
+
 
 
 // Módulo: Repuestos y entradas
@@ -1122,14 +1410,43 @@ app.post('/taller/recepcion/guardar', async (req, res) => {
     }
 
     try {
-        // Insertar en recepcion_equipos
+        // 1. Insertar en recepcion_equipos
         const [result] = await db.query(`
             INSERT INTO recepcion_equipos 
             (id_equipo, fecha_ingreso, falla_reportada, accesorios, quien_entrega, estado_reparacion, tecnico_asignado, notas_adicionales) 
             VALUES (?, NOW(), ?, ?, ?, 'Pendiente', ?, ?)
         `, [id_equipo, falla_reportada, accesorios || null, quien_entrega, tecnico_asignado, null]);
 
-        req.flash('success', `✅ Orden de servicio #${result.insertId} registrada correctamente`);
+        const id_recepcion = result.insertId;
+
+        // 2. 🔥 NUEVO: CREAR ORDEN DE TRABAJO para el técnico asignado
+        // Obtener el colaborador asignado al equipo
+        const [equipo] = await db.query(`SELECT id_colaborador FROM equipos WHERE id_equipo = ?`, [id_equipo]);
+        
+        // Generar número de orden consecutivo
+        const [lastOrder] = await db.query(`SELECT numero_orden FROM ordenes_trabajo ORDER BY id_orden DESC LIMIT 1`);
+        let newNumber = 1;
+        if (lastOrder.length > 0) {
+            const lastNum = parseInt(lastOrder[0].numero_orden.split('-')[1]);
+            newNumber = lastNum + 1;
+        }
+        const numero_orden = `OT-${newNumber.toString().padStart(5, '0')}`;
+        
+        await db.query(`
+            INSERT INTO ordenes_trabajo 
+            (numero_orden, tipo_orden, id_orden_referencia, id_equipo, id_colaborador, 
+             tecnico_asignado, fecha_apertura, estado, id_usuario_registro) 
+            VALUES (?, 'taller', ?, ?, ?, ?, NOW(), 'Pendiente', ?)
+        `, [
+            numero_orden, 
+            id_recepcion, 
+            id_equipo, 
+            equipo[0]?.id_colaborador || null,
+            tecnico_asignado, 
+            req.session.id_usuario
+        ]);
+
+        req.flash('success', `✅ Orden de servicio #${id_recepcion} y orden de trabajo ${numero_orden} creada`);
         res.redirect('/taller/recepcion');
 
     } catch (error) {
@@ -1232,7 +1549,7 @@ app.get('/dashboard', async (req, res) => {
 
 
 
-// Para arrancar el Servidor
+// Código para arrancar el Servidor
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`🚀 Servidor corriendo en: http://localhost:${PORT}`);

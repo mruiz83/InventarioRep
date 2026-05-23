@@ -1,0 +1,240 @@
+<%- include('partials/header') %>
+<%- include('partials/sidebar') %>
+
+<div class="main-content">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="m-0 text-secondary fw-bold">
+                <i class="fa-solid fa-industry me-2 text-primary"></i>Órdenes en Taller
+            </h4>
+            <p class="text-muted small mb-0">Órdenes de trabajo asignadas a usted</p>
+        </div>
+        <div>
+            <a href="/ordenes/historial" class="btn btn-outline-secondary rounded-pill px-4">
+                <i class="fa-solid fa-clock-rotate-left me-2"></i>Mi Historial
+            </a>
+        </div>
+    </div>
+
+    <!-- Tarjetas de resumen -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm text-center bg-warning bg-opacity-10">
+                <div class="card-body py-3">
+                    <h5 class="text-warning mb-0"><%= pendientes %></h5>
+                    <small class="text-muted">Pendientes</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm text-center bg-info bg-opacity-10">
+                <div class="card-body py-3">
+                    <h5 class="text-info mb-0"><%= enProceso %></h5>
+                    <small class="text-muted">En Proceso</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm text-center bg-success bg-opacity-10">
+                <div class="card-body py-3">
+                    <h5 class="text-success mb-0"><%= completadas %></h5>
+                    <small class="text-muted">Completadas</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pestañas -->
+    <ul class="nav nav-tabs mb-3">
+        <li class="nav-item">
+            <a class="nav-link active" data-bs-toggle="tab" href="#pendientes">
+                <i class="fa-regular fa-clock me-1"></i>Pendientes
+                <% if (pendientes > 0) { %>
+                    <span class="badge bg-warning ms-1"><%= pendientes %></span>
+                <% } %>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" data-bs-toggle="tab" href="#proceso">
+                <i class="fa-solid fa-spinner me-1"></i>En Proceso
+                <% if (enProceso > 0) { %>
+                    <span class="badge bg-info ms-1"><%= enProceso %></span>
+                <% } %>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" data-bs-toggle="tab" href="#completadas">
+                <i class="fa-regular fa-circle-check me-1"></i>Completadas
+                <% if (completadas > 0) { %>
+                    <span class="badge bg-success ms-1"><%= completadas %></span>
+                <% } %>
+            </a>
+        </li>
+    </ul>
+
+    <!-- Contenido de pestañas -->
+    <div class="tab-content">
+        <!-- PENDIENTES -->
+        <div class="tab-pane fade show active" id="pendientes">
+            <div class="card border-0 shadow-sm">
+                <div class="list-group list-group-flush">
+                    <% 
+                      const pendientesList = [];
+                      for (let i = 0; i < ordenes.length; i++) {
+                          if (ordenes[i].estado === 'Pendiente') {
+                              pendientesList.push(ordenes[i]);
+                          }
+                      }
+                    %>
+                    <% if (pendientesList.length > 0) { %>
+                        <% for (let i = 0; i < pendientesList.length; i++) { 
+                             const orden = pendientesList[i];
+                        %>
+                            <div class="list-group-item">
+                                <div class="row align-items-center">
+                                    <div class="col-md-2">
+                                        <span class="fw-bold text-primary">#<%= orden.numero_orden %></span>
+                                        <br>
+                                        <small class="text-muted"><%= new Date(orden.fecha_apertura).toLocaleDateString() %></small>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="fw-bold"><%= orden.codigo_informatico %></div>
+                                        <small class="text-muted"><%= orden.marca_modelo %></small>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <small class="text-muted">Quién entrega:</small>
+                                        <div><%= orden.quien_entrega || 'N/E' %></div>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <span class="badge bg-warning text-dark">⏳ Pendiente</span>
+                                    </div>
+                                    <div class="col-md-2 text-end">
+                                        <a href="/ordenes/<%= orden.id_orden %>" class="btn btn-sm btn-primary rounded-pill">
+                                            <i class="fa-solid fa-eye me-1"></i> Atender
+                                        </a>
+                                    </div>
+                                </div>
+                                <div class="row mt-2">
+                                    <div class="col-12">
+                                        <small class="text-muted">Falla: <strong><%= orden.falla_reportada ? orden.falla_reportada.substring(0, 80) : '' %></strong></small>
+                                    </div>
+                                </div>
+                            </div>
+                        <% } %>
+                    <% } else { %>
+                        <div class="text-center py-4 text-muted">
+                            <i class="fa-regular fa-face-smile fa-2x mb-2"></i>
+                            <p>No tienes órdenes pendientes</p>
+                        </div>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+
+        <!-- EN PROCESO -->
+        <div class="tab-pane fade" id="proceso">
+            <div class="card border-0 shadow-sm">
+                <div class="list-group list-group-flush">
+                    <% 
+                      const procesoList = [];
+                      for (let i = 0; i < ordenes.length; i++) {
+                          if (ordenes[i].estado === 'En Proceso') {
+                              procesoList.push(ordenes[i]);
+                          }
+                      }
+                    %>
+                    <% if (procesoList.length > 0) { %>
+                        <% for (let i = 0; i < procesoList.length; i++) { 
+                             const orden = procesoList[i];
+                        %>
+                            <div class="list-group-item">
+                                <div class="row align-items-center">
+                                    <div class="col-md-2">
+                                        <span class="fw-bold text-primary">#<%= orden.numero_orden %></span>
+                                        <br>
+                                        <small class="text-muted"><%= new Date(orden.fecha_apertura).toLocaleDateString() %></small>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="fw-bold"><%= orden.codigo_informatico %></div>
+                                        <small class="text-muted"><%= orden.marca_modelo %></small>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <small class="text-muted">Quién entrega:</small>
+                                        <div><%= orden.quien_entrega || 'N/E' %></div>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <span class="badge bg-info">🔄 En Proceso</span>
+                                    </div>
+                                    <div class="col-md-2 text-end">
+                                        <a href="/ordenes/<%= orden.id_orden %>" class="btn btn-sm btn-primary rounded-pill">
+                                            <i class="fa-solid fa-eye me-1"></i> Continuar
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        <% } %>
+                    <% } else { %>
+                        <div class="text-center py-4 text-muted">
+                            <i class="fa-regular fa-clock fa-2x mb-2"></i>
+                            <p>No hay órdenes en proceso</p>
+                        </div>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+
+        <!-- COMPLETADAS -->
+        <div class="tab-pane fade" id="completadas">
+            <div class="card border-0 shadow-sm">
+                <div class="list-group list-group-flush">
+                    <% 
+                      const completadasList = [];
+                      for (let i = 0; i < ordenes.length; i++) {
+                          if (ordenes[i].estado === 'Completado') {
+                              completadasList.push(ordenes[i]);
+                          }
+                      }
+                    %>
+                    <% if (completadasList.length > 0) { %>
+                        <% for (let i = 0; i < completadasList.length; i++) { 
+                             const orden = completadasList[i];
+                        %>
+                            <div class="list-group-item">
+                                <div class="row align-items-center">
+                                    <div class="col-md-2">
+                                        <span class="fw-bold text-primary">#<%= orden.numero_orden %></span>
+                                        <br>
+                                        <small class="text-muted"><%= new Date(orden.fecha_cierre).toLocaleDateString() %></small>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="fw-bold"><%= orden.codigo_informatico %></div>
+                                        <small class="text-muted"><%= orden.marca_modelo %></small>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <small class="text-muted">Solución:</small>
+                                        <div class="small"><%= orden.trabajo_realizado ? orden.trabajo_realizado.substring(0, 60) : '' %>...</div>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <span class="badge bg-success">✅ Completado</span>
+                                    </div>
+                                    <div class="col-md-1 text-end">
+                                        <a href="/ordenes/<%= orden.id_orden %>" class="btn btn-sm btn-outline-secondary rounded-pill">
+                                            <i class="fa-solid fa-eye"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        <% } %>
+                    <% } else { %>
+                        <div class="text-center py-4 text-muted">
+                            <i class="fa-regular fa-file-lines fa-2x mb-2"></i>
+                            <p>No hay órdenes completadas</p>
+                        </div>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<%- include('partials/footer') %>

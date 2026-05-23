@@ -1,0 +1,203 @@
+<%- include('partials/header') %>
+<%- include('partials/sidebar') %>
+
+<div class="main-content">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4 class="m-0 text-secondary fw-bold">
+            <i class="fa-solid fa-clipboard-list me-2 text-primary"></i>Orden #<%= orden.numero_orden %>
+        </h4>
+        <a href="/mis-ordenes/activas" class="btn btn-secondary rounded-pill px-4">
+            <i class="fa-solid fa-arrow-left me-2"></i>Volver
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white fw-bold">
+                    <i class="fa-solid fa-info-circle me-2 text-primary"></i>Información General
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm table-borderless">
+                        <tr>
+                            <td class="ps-0 fw-bold" width="40%">N° Orden:</td>
+                            <td><%= orden.numero_orden %></td>
+                        </tr>
+                        <tr>
+                            <td class="ps-0 fw-bold">Tipo:</td>
+                            <td>
+                                <% if (orden.tipo_orden === 'taller') { %>
+                                    <span class="badge bg-primary">Taller</span>
+                                <% } else if (orden.tipo_orden === 'fuera_taller') { %>
+                                    <span class="badge bg-info">Fuera del Taller</span>
+                                <% } else if (orden.tipo_orden === 'remota') { %>
+                                    <span class="badge bg-secondary">Remota</span>
+                                <% } else { %>
+                                    <span class="badge bg-warning text-dark">Mantenimiento</span>
+                                <% } %>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="ps-0 fw-bold">Estado:</td>
+                            <td>
+                                <% if (orden.estado === 'Pendiente') { %>
+                                    <span class="badge bg-warning text-dark">Pendiente</span>
+                                <% } else if (orden.estado === 'En Proceso') { %>
+                                    <span class="badge bg-info">En Proceso</span>
+                                <% } else { %>
+                                    <span class="badge bg-success">Completado</span>
+                                <% } %>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="ps-0 fw-bold">Fecha Apertura:</td>
+                            <td><%= new Date(orden.fecha_apertura).toLocaleString() %></td>
+                        </tr>
+                        <% if (orden.fecha_cierre) { %>
+                            <tr>
+                                <td class="ps-0 fw-bold">Fecha Cierre:</td>
+                                <td><%= new Date(orden.fecha_cierre).toLocaleString() %></td>
+                            </tr>
+                        <% } %>
+                        <tr>
+                            <td class="ps-0 fw-bold">Técnico:</td>
+                            <td><%= orden.tecnico_nombre %></td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white fw-bold">
+                    <i class="fa-solid fa-laptop me-2 text-primary"></i>Información del Equipo
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm table-borderless">
+                        <tr>
+                            <td class="ps-0 fw-bold" width="40%">Código Informático:</td>
+                            <td><%= orden.codigo_informatico || 'Mantenimiento múltiple' %></td>
+                        </tr>
+                        <tr>
+                            <td class="ps-0 fw-bold">Marca/Modelo:</td>
+                            <td><%= orden.marca_modelo || '-' %></td>
+                        </tr>
+                        <tr>
+                            <td class="ps-0 fw-bold">Serie:</td>
+                            <td><%= orden.serie || '-' %></td>
+                        </tr>
+                        <tr>
+                            <td class="ps-0 fw-bold">Tipo:</td>
+                            <td><%= orden.tipo_equipo || '-' %></td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <% if (orden.tipo_orden === 'taller') { %>
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white fw-bold">
+                        <i class="fa-solid fa-clipboard me-2 text-warning"></i>Información de Recepción
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <small class="text-muted">Quién entrega:</small>
+                                <p class="fw-bold"><%= orden.quien_entrega || 'N/E' %></p>
+                            </div>
+                            <div class="col-md-6">
+                                <small class="text-muted">Accesorios:</small>
+                                <p><%= orden.accesorios || 'Ninguno' %></p>
+                            </div>
+                            <div class="col-12">
+                                <small class="text-muted">Falla Reportada:</small>
+                                <p class="bg-light p-2 rounded"><%= orden.falla_reportada %></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    <% } %>
+
+    <% if (orden.tipo_orden === 'mantenimiento' && equiposMantenimiento.length > 0) { %>
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white fw-bold">
+                        <i class="fa-solid fa-microchip me-2 text-primary"></i>Equipos en Mantenimiento
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Código</th>
+                                        <th>Marca/Modelo</th>
+                                        <th>Serie</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <% equiposMantenimiento.forEach(eq => { %>
+                                        <tr>
+                                            <td><%= eq.codigo_informatico %></td>
+                                            <td><%= eq.marca_modelo %></td>
+                                            <td><%= eq.serie || '-' %></td>
+                                        </tr>
+                                    <% }) %>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    <% } %>
+
+    <!-- Actualizar estado y solución -->
+    <% if (orden.estado !== 'Completado') { %>
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white fw-bold">
+                <i class="fa-solid fa-wrench me-2 text-success"></i>Atender Orden
+            </div>
+            <div class="card-body">
+                <form action="/mis-ordenes/<%= orden.id_orden %>/estado" method="POST">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">Actualizar Estado</label>
+                            <select name="estado" class="form-select" required>
+                                <option value="En Proceso" <%= orden.estado === 'En Proceso' ? 'selected' : '' %>>En Proceso</option>
+                                <option value="Completado">Completado</option>
+                            </select>
+                        </div>
+                        <div class="col-md-8 mb-3">
+                            <label class="form-label fw-bold">Trabajo Realizado / Solución</label>
+                            <textarea name="trabajo_realizado" class="form-control" rows="3" placeholder="Describa el trabajo realizado, solución aplicada, repuestos utilizados..." required></textarea>
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <button type="submit" class="btn btn-success rounded-pill px-4">
+                            <i class="fa-solid fa-save me-2"></i>Guardar Cambios
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    <% } else { %>
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white fw-bold">
+                <i class="fa-solid fa-check-circle me-2 text-success"></i>Solución Aplicada
+            </div>
+            <div class="card-body">
+                <p><%= orden.trabajo_realizado || 'No se registró solución' %></p>
+            </div>
+        </div>
+    <% } %>
+</div>
+
+<%- include('partials/footer') %>
