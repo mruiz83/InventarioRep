@@ -2,7 +2,9 @@ const express = require('express');
 const path = require('path');
 const session = require('express-session');
 const flash = require('connect-flash');
-const db = require('./db'); 
+const db = require('./db');
+const authRoutes = require('./controllers/authRoutes');
+const { attachUserContext, restrictTo: restringirA } = require('./middleware/auth');
 require('dotenv').config();
 
 const app = express();
@@ -23,111 +25,13 @@ app.use(session({
     saveUninitialized: false
 }));
 app.use(flash());
-
-// Definir función -- para restringir ruras a usuarios
-const restringirA = (rolesPermitidos) => {
-    return (req, res, next) => {
-        if (req.session.loggedin) {
-            if (rolesPermitidos.includes(req.session.rol)) {
-                return next();
-            }
-            req.flash('error', 'No tienes permiso para acceder a este módulo');
-            return res.redirect('/dashboard');
-        }
-        res.redirect('/');
-    };
-};
+app.use(attachUserContext);
+app.use(authRoutes);
 
 
 
-app.use((req, res, next) => {
-    res.locals.messages = req.flash();
-    res.locals.userRol = req.session.rol || null; 
-    next();
-});
 
 
-
-// Ruta de acceso (Login/Logout/Dashboard)
-app.get('/', (req, res) => { res.render('login'); });
-
-app.post('/auth/login', async (req, res) => {
-    const { usuario, password } = req.body; 
-    try {
-        const [rows] = await db.query('SELECT * FROM usuarios WHERE usuario = ? AND contraseña = ?', [usuario, password]);
-        if (rows.length > 0) {
-            req.session.loggedin = true;
-            req.session.id_usuario = rows[0].id_usuarios;
-            req.session.nombreReal = rows[0].nombre;
-            req.session.rol = rows[0].id_rol;
-            res.redirect('/dashboard'); 
-        } else {
-            req.flash('error', 'Usuario o contraseña incorrectos');
-            res.redirect('/');
-        }
-    } catch (error) { res.status(500).send('Error en el servidor.'); }
-});
-
-
-// Ruta para mostrar el formulario de registro
-app.get('/registro', (req, res) => {
-    res.render('register', { messages: req.flash() });
-});
-
-// Ruta para procesar el registro
-app.post('/auth/registro', async (req, res) => {
-    const { nombre, usuario, password, confirm_password } = req.body;
-    
-    // Validaciones
-    if (!nombre || !usuario || !password) {
-        req.flash('error', 'Todos los campos son obligatorios');
-        return res.redirect('/registro');
-    }
-    
-    if (password !== confirm_password) {
-        req.flash('error', 'Las contraseñas no coinciden');
-        return res.redirect('/registro');
-    }
-    
-    if (password.length < 6) {
-        req.flash('error', 'La contraseña debe tener al menos 6 caracteres');
-        return res.redirect('/registro');
-    }
-    
-    try {
-        // Verificar si el usuario ya existe
-        const [existe] = await db.query(
-            'SELECT COUNT(*) as total FROM usuarios WHERE usuario = ?',
-            [usuario]
-        );
-        
-        if (existe[0].total > 0) {
-            req.flash('error', 'El nombre de usuario ya está registrado');
-            return res.redirect('/registro');
-        }
-        
-        // Obtener el rol por defecto (Técnico)
-        const [rolDefecto] = await db.query(
-            'SELECT id_rol FROM rol_usuarios WHERE nombre_rol = "Técnico"'
-        );
-        
-        const id_rol = rolDefecto.length > 0 ? rolDefecto[0].id_rol : 2;
-        
-        // Insertar nuevo usuario
-        await db.query(
-            'INSERT INTO usuarios (nombre, usuario, contraseña, id_rol) VALUES (?, ?, ?, ?)',
-            [nombre, usuario, password, id_rol]
-        );
-        
-        req.flash('success', '✅ Usuario registrado exitosamente. Ahora puede iniciar sesión.');
-        res.redirect('/');
-        
-    } catch (error) {
-        console.error("Error en registro:", error);
-        req.flash('error', 'Error al registrar usuario: ' + error.message);
-        res.redirect('/registro');
-    }
-});
 
 
 // Ruta para el dashboard corregida 05/06/2026
