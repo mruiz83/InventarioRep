@@ -594,6 +594,322 @@ app.get('/ordenes/taller', async (req, res) => {
     }
 });
 
+
+// ============================================
+// DETALLE DE ORDEN PARA ATENCIÓN DEL TÉCNICO
+// ============================================
+app.get('/ordenes/:id', async (req, res) => {
+    if (!req.session.loggedin) return res.redirect('/');
+    
+    const { id } = req.params;
+    
+    try {
+        // 🔥 NUEVO: Si la orden está Pendiente, cambiarla a En Proceso automáticamente
+        const [estadoActual] = await db.query(`
+            SELECT estado FROM ordenes_trabajo 
+            WHERE id_orden = ? AND tecnico_asignado = ?
+        `, [id, req.session.id_usuario]);
+        
+        if (estadoActual.length > 0 && estadoActual[0].estado === 'Pendiente') {
+            await db.query(`
+                UPDATE ordenes_trabajo 
+                SET estado = 'En Proceso' 
+                WHERE id_orden = ? AND tecnico_asignado = ?
+            `, [id, req.session.id_usuario]);
+            console.log(`📝 Orden ${id} cambiada a En Proceso automáticamente`);
+        }
+        
+        // Obtener datos completos de la orden
+        const [ordenes] = await db.query(`
+            SELECT ot.*, 
+                   r.id_recepcion,
+                   r.falla_reportada,
+                   r.quien_entrega,
+                   r.accesorios,
+                   r.fecha_ingreso,
+                   e.id_equipo,
+                   e.codigo_informatico,
+                   e.marca_modelo,
+                   e.serie,
+                   e.tipo_equipo,
+                   e.codigo_inventario,
+                   c.nombre_completo AS colaborador_nombre,
+                   c.cargo,
+                   c.extension_telefonica,
+                   d.nombre_dependencia,
+                   u.nombre AS tecnico_nombre
+            FROM ordenes_trabajo ot
+            LEFT JOIN recepcion_equipos r ON ot.id_orden_referencia = r.id_recepcion
+            LEFT JOIN equipos e ON ot.id_equipo = e.id_equipo
+            LEFT JOIN colaboradores c ON ot.id_colaborador = c.id_colaborador
+            LEFT JOIN dependencias d ON c.id_dependencia = d.id_dependencia
+            LEFT JOIN usuarios u ON ot.tecnico_asignado = u.id_usuarios
+            WHERE ot.id_orden = ? AND ot.tecnico_asignado = ?
+        `, [id, req.session.id_usuario]);
+        
+        if (ordenes.length === 0) {
+            req.flash('error', 'Orden no encontrada o no autorizada');
+            return res.redirect('/ordenes/taller');
+        }
+        
+        const orden = ordenes[0];
+        
+        // Obtener repuestos ya agregados a esta orden
+        const [repuestosUsados] = await db.query(`
+            SELECT orp.*, r.nombre, r.descripcion, r.marca
+            FROM ordenes_repuestos orp
+            JOIN repuestos r ON orp.id_repuesto = r.id_repuestos
+            WHERE orp.id_orden = ?
+            ORDER BY orp.id_orden_repuesto DESC
+        `, [id]);
+        
+        // Para órdenes de mantenimiento, obtener equipos adicionales
+        let equiposMantenimiento = [];
+        if (orden.tipo_orden === 'mantenimiento') {
+            [equiposMantenimiento] = await db.query(`
+                SELECT ome.*, e.codigo_informatico, e.marca_modelo, e.serie
+                FROM ordenes_mantenimiento_equipos ome
+                JOIN equipos e ON ome.id_equipo = e.id_equipo
+                WHERE ome.id_orden = ?
+            `, [id]);
+        }
+        
+        // Obtener lista de repuestos disponibles para agregar
+        const [repuestosDisponibles] = await db.query(`
+            SELECT 
+                r.id_repuestos,
+                r.nombre,
+                r.descripcion,
+                r.marca,
+                r.modelo,
+                (
+                    SELECT IFNULL(SUM(e.cantidad), 0) FROM entradas e WHERE e.id_repuestos = r.id_repuestos
+                ) - (
+                    SELECT IFNULL(SUM(s.cantidad), 0) FROM salidas s WHERE s.id_repuestos = r.id_repuestos
+                ) AS stock_actual
+            FROM repuestos r
+            HAVING stock_actual > 0
+            ORDER BY r.nombre ASC
+        `);
+        
+        res.render('orden_atencion', {
+            nombre: req.session.nombreReal,
+            rol: req.session.rol,
+            orden: orden,
+            repuestosUsados: repuestosUsados,
+            repuestosDisponibles: repuestosDisponibles,
+            equiposMantenimiento: equiposMantenimiento,
+            pagina: 'ordenes_taller'
+        });
+    } catch (error) {
+        console.error("Error:", error);
+        req.flash('error', 'Error al cargar el detalle de la orden');
+        res.redirect('/ordenes/taller');
+    }
+});
+
+// ============================================
+// AGREGAR REPUESTO A LA ORDEN
+// ============================================
+app.post('/ordenes/:id/agregar-repuesto', async (req, res) => {
+    if (!req.session.loggedin) return res.redirect('/');
+    
+    const { id } = req.params;
+    const { id_repuesto, cantidad } = req.body;
+    
+    try {
+        // Validar stock
+        const [stockCheck] = await db.query(`
+            SELECT 
+                (SELECT IFNULL(SUM(e.cantidad), 0) FROM entradas e WHERE e.id_repuestos = ?) 
+                - (SELECT IFNULL(SUM(s.cantidad), 0) FROM salidas s WHERE s.id_repuestos = ?) 
+                AS stock_actual
+        `, [id_repuesto, id_repuesto]);
+        
+        const stockActual = stockCheck[0].stock_actual;
+        
+        if (cantidad > stockActual) {
+            req.flash('error', `Stock insuficiente. Solo hay ${stockActual} unidades disponibles`);
+            return res.redirect(`/ordenes/${id}`);
+        }
+        
+        await db.query(`
+            INSERT INTO ordenes_repuestos (id_orden, id_repuesto, cantidad_usada)
+            VALUES (?, ?, ?)
+        `, [id, id_repuesto, cantidad]);
+        
+        req.flash('success', '✅ Repuesto agregado correctamente');
+        res.redirect(`/ordenes/${id}`);
+    } catch (error) {
+        console.error("Error:", error);
+        req.flash('error', 'Error al agregar repuesto');
+        res.redirect(`/ordenes/${id}`);
+    }
+});
+
+// ============================================
+// ELIMINAR REPUESTO DE LA ORDEN
+// ============================================
+app.post('/ordenes/:id/eliminar-repuesto/:id_orden_repuesto', async (req, res) => {
+    if (!req.session.loggedin) return res.redirect('/');
+    
+    const { id, id_orden_repuesto } = req.params;
+    
+    try {
+        await db.query(`DELETE FROM ordenes_repuestos WHERE id_orden_repuesto = ? AND id_orden = ?`, 
+            [id_orden_repuesto, id]);
+        
+        req.flash('success', '✅ Repuesto eliminado');
+        res.redirect(`/ordenes/${id}`);
+    } catch (error) {
+        console.error("Error:", error);
+        req.flash('error', 'Error al eliminar repuesto');
+        res.redirect(`/ordenes/${id}`);
+    }
+});
+
+// ============================================
+// ACTUALIZAR ESTADO DE LA ORDEN
+// ============================================
+app.post('/ordenes/:id/actualizar-estado', async (req, res) => {
+    if (!req.session.loggedin) return res.redirect('/');
+    
+    const { id } = req.params;
+    const { estado, trabajo_realizado, descontar_repuestos } = req.body;
+    
+    const connection = await db.getConnection();
+    await connection.beginTransaction();
+    
+    try {
+        let fecha_cierre = null;
+        
+        if (estado === 'Completado') {
+            fecha_cierre = new Date();
+            
+            if (descontar_repuestos === 'on') {
+                const [repuestos] = await connection.query(`
+                    SELECT id_repuesto, cantidad_usada 
+                    FROM ordenes_repuestos 
+                    WHERE id_orden = ?
+                `, [id]);
+                
+                for (const repuesto of repuestos) {
+                    // INSERT sin id_orden_referencia
+                    await connection.query(`
+                        INSERT INTO salidas 
+                        (id_repuestos, cantidad, fecha_salida, id_usuarios, orden, equipo, observaciones) 
+                        VALUES (?, ?, NOW(), ?, ?, ?, ?)
+                    `, [
+                        repuesto.id_repuesto,
+                        repuesto.cantidad_usada,
+                        req.session.id_usuario,
+                        `OT-${id}`,
+                        `Orden de trabajo #${id}`,
+                        `Repuestos utilizados en reparación - Orden: ${id}`
+            ]);
+                }
+            }
+            
+            const [orden] = await connection.query(`SELECT tipo_orden, id_orden_referencia FROM ordenes_trabajo WHERE id_orden = ?`, [id]);
+            if (orden[0]?.tipo_orden === 'taller' && orden[0]?.id_orden_referencia) {
+                await connection.query(`
+                    UPDATE recepcion_equipos 
+                    SET estado_reparacion = 'Reparado' 
+                    WHERE id_recepcion = ?
+                `, [orden[0].id_orden_referencia]);
+            }
+        }
+        
+        await connection.query(`
+            UPDATE ordenes_trabajo 
+            SET estado = ?, 
+                fecha_cierre = ?, 
+                trabajo_realizado = ?
+            WHERE id_orden = ? AND tecnico_asignado = ?
+        `, [estado, fecha_cierre, trabajo_realizado, id, req.session.id_usuario]);
+        
+        await connection.commit();
+        
+        req.flash('success', `✅ Orden ${estado === 'Completado' ? 'completada' : 'actualizada'} correctamente`);
+        res.redirect('/ordenes/taller');
+    } catch (error) {
+        await connection.rollback();
+        console.error("Error:", error);
+        req.flash('error', 'Error al actualizar la orden: ' + error.message);
+        res.redirect(`/ordenes/${id}`);
+    } finally {
+        connection.release();
+    }
+});
+
+
+// ============================================
+// IMPRIMIR ORDEN DE TRABAJO COMPLETADA
+// ============================================
+app.get('/ordenes/:id/imprimir', async (req, res) => {
+    if (!req.session.loggedin) return res.redirect('/');
+    
+    const { id } = req.params;
+    
+    try {
+        // Obtener datos completos de la orden
+        const [ordenes] = await db.query(`
+            SELECT ot.*, 
+                   r.id_recepcion,
+                   r.falla_reportada,
+                   r.quien_entrega,
+                   r.accesorios,
+                   r.fecha_ingreso,
+                   e.id_equipo,
+                   e.codigo_informatico,
+                   e.marca_modelo,
+                   e.serie,
+                   e.tipo_equipo,
+                   e.codigo_inventario,
+                   c.nombre_completo AS colaborador_nombre,
+                   c.cargo,
+                   c.extension_telefonica,
+                   d.nombre_dependencia,
+                   u.nombre AS tecnico_nombre
+            FROM ordenes_trabajo ot
+            LEFT JOIN recepcion_equipos r ON ot.id_orden_referencia = r.id_recepcion
+            LEFT JOIN equipos e ON ot.id_equipo = e.id_equipo
+            LEFT JOIN colaboradores c ON ot.id_colaborador = c.id_colaborador
+            LEFT JOIN dependencias d ON c.id_dependencia = d.id_dependencia
+            LEFT JOIN usuarios u ON ot.tecnico_asignado = u.id_usuarios
+            WHERE ot.id_orden = ? AND ot.tecnico_asignado = ?
+        `, [id, req.session.id_usuario]);
+        
+        if (ordenes.length === 0) {
+            req.flash('error', 'Orden no encontrada o no autorizada');
+            return res.redirect('/ordenes/taller');
+        }
+        
+        const orden = ordenes[0];
+        
+        // Obtener repuestos utilizados en la orden
+        const [repuestosUsados] = await db.query(`
+            SELECT orp.*, r.nombre, r.descripcion, r.marca
+            FROM ordenes_repuestos orp
+            JOIN repuestos r ON orp.id_repuesto = r.id_repuestos
+            WHERE orp.id_orden = ?
+            ORDER BY orp.id_orden_repuesto DESC
+        `, [id]);
+        
+        res.render('imprimir_orden_trabajo', {
+            orden: orden,
+            repuestosUsados: repuestosUsados
+        });
+        
+    } catch (error) {
+        console.error("Error al imprimir orden:", error);
+        req.flash('error', 'Error al generar la orden de impresión');
+        res.redirect('/ordenes/taller');
+    }
+});
+
+
+
 // ============================================
 // ÓRDENES FUERA DEL TALLER / REMOTAS (similares)
 // ============================================
@@ -1493,59 +1809,100 @@ app.get('/taller/recepcion/imprimir/:id_recepcion', async (req, res) => {
 });
 
 
-// Marcar equipo como entregado
-app.get('/taller/recepcion/entregar/:id_recepcion', async (req, res) => {
+// Marcar equipo como entregado con registro de entrega
+app.post('/taller/recepcion/entregar', async (req, res) => {
     if (!req.session.loggedin) return res.redirect('/');
 
-    const { id_recepcion } = req.params;
+    const { 
+        id_recepcion, 
+        fecha_entrega, 
+        tecnico_entrega, 
+        persona_retira, 
+        documento_retira, 
+        telefono_retira, 
+        observaciones_entrega,
+        imprimir_seguridad 
+    } = req.body;
 
     try {
+        // Actualizar estado en recepcion_equipos
         await db.query(`
             UPDATE recepcion_equipos 
             SET estado_reparacion = 'Entregado' 
             WHERE id_recepcion = ?
         `, [id_recepcion]);
 
-        req.flash('success', '✅ Equipo marcado como entregado');
-        res.redirect('/taller/recepcion');
+        // Registrar entrega en tabla de entregas
+        const [result] = await db.query(`
+            INSERT INTO entregas_equipos 
+            (id_recepcion, fecha_entrega, tecnico_entrega, persona_retira, 
+             documento_retira, telefono_retira, observaciones, usuario_registro) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `, [id_recepcion, fecha_entrega, tecnico_entrega, persona_retira, 
+            documento_retira || null, telefono_retira || null, observaciones_entrega || null, req.session.id_usuario]);
+
+        const id_entrega = result.insertId;
+
+        req.flash('success', '✅ Equipo entregado correctamente');
+
+        // Redirigir a impresión según la opción
+        if (imprimir_seguridad === '1') {
+            res.redirect(`/taller/recepcion/imprimir-entrega/${id_entrega}?tipo=seguridad`);
+        } else {
+            res.redirect(`/taller/recepcion/imprimir-entrega/${id_entrega}?tipo=taller`);
+        }
 
     } catch (error) {
         console.error("Error al entregar equipo:", error);
-        req.flash('error', 'Error al actualizar estado');
+        req.flash('error', 'Error al entregar el equipo: ' + error.message);
         res.redirect('/taller/recepcion');
     }
 });
 
 
-// UComponente NPM para mostrar fecha y hora (en construccción) ------
-const dataHora = require('data-hora'); // Para importamos el paquete data-hora
-
-app.get('/dashboard', async (req, res) => {
+// Imprimir comprobante de entrega
+app.get('/taller/recepcion/imprimir-entrega/:id_entrega', async (req, res) => {
+    if (!req.session.loggedin) return res.redirect('/');
+    
+    const { id_entrega } = req.params;
+    const { tipo } = req.query; // 'taller' o 'seguridad'
+    
     try {
-        // Consultas reales a tu base de datos SQL
-        const [equipos] = await db.query('SELECT COUNT(*) as total FROM equipos');
-        const [asignados] = await db.query('SELECT COUNT(*) as total FROM equipos WHERE estado = "Asignado"');
-        const [colaboradores] = await db.query('SELECT COUNT(*) as total FROM colaboradores');
-
-        // Enviar resultados a los datos reales
-        res.render('dashboard', {
-            nombre: "Tu Nombre", // Nombre de inicio de sesión
-            totalEquipos: equipos[0].total,
-            asignados: asignados[0].total,
-            totalColab: colaboradores[0].total,
-            colabConEquipo: asignados[0].total, 
-            stockCero: 0, 
-            stockMinimo: 0
+        const [entregas] = await db.query(`
+            SELECT e.*, r.id_recepcion, r.id_equipo
+            FROM entregas_equipos e
+            JOIN recepcion_equipos r ON e.id_recepcion = r.id_recepcion
+            WHERE e.id_entrega = ?
+        `, [id_entrega]);
+        
+        if (entregas.length === 0) {
+            req.flash('error', 'Registro de entrega no encontrado');
+            return res.redirect('/taller/recepcion');
+        }
+        
+        const entrega = entregas[0];
+        
+        const [equipos] = await db.query(`
+            SELECT e.* 
+            FROM equipos e
+            WHERE e.id_equipo = ?
+        `, [entrega.id_equipo]);
+        
+        const equipo = equipos[0];
+        
+        res.render('imprimir_entrega', {
+            entrega: entrega,
+            equipo: equipo,
+            recepcion: { id_recepcion: entrega.id_recepcion },
+            tipo: tipo || 'taller'
         });
+        
     } catch (error) {
-        console.error("Error al cargar datos:", error);
-        res.render('dashboard', { 
-            nombre: "Usuario", 
-            totalEquipos: 0, asignados: 0, totalColab: 0, colabConEquipo: 0, stockCero: 0, stockMinimo: 0 
-        });
+        console.error("Error:", error);
+        req.flash('error', 'Error al generar comprobante');
+        res.redirect('/taller/recepcion');
     }
 });
-
 
 
 

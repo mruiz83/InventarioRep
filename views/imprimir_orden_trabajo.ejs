@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Orden de Trabajo #<%= orden.numero_orden %></title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            padding: 20px;
+            background: white;
+        }
+        .orden-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            border: 1px solid #ccc;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        
+        /* HEADER */
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #003366;
+        }
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .logo-enacal {
+            width: 80px;
+            height: 80px;
+        }
+        .logo-enacal img {
+            width: 130%;
+            height: 130%;
+            object-fit: contain;
+        }
+        .logo-text h1 {
+            font-size: 18px;
+            margin: 0;
+            color: #003366;
+        }
+        .taller-icon {
+            text-align: right;
+        }
+        .taller-icon i {
+            font-size: 50px;
+            color: #667eea;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .header h2 {
+            font-size: 14px;
+            color: #666;
+            margin-top: 5px;
+        }
+        .folio {
+            text-align: right;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            background: #f0f0f0;
+            padding: 5px 10px;
+            border-radius: 5px;
+        }
+        
+        /* 🔥 NUEVO: Layout de dos columnas */
+        .row-2col {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .col-half {
+            flex: 1;
+        }
+        .info-section {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            height: 100%;
+        }
+        .info-row {
+            margin-bottom: 5px;
+        }
+        .label {
+            font-weight: bold;
+            display: inline-block;
+            width: 130px;
+        }
+        .trabajo-realizado {
+            background: #f9f9f9;
+            padding: 15px;
+            margin: 15px 0;
+            border-left: 3px solid #198754;
+        }
+        .trabajo-realizado p {
+            min-height: 100px;
+            white-space: pre-wrap;
+        }
+        .repuestos-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+        .repuestos-table th, .repuestos-table td {
+            border: 1px solid #ddd;
+            padding: 6px;
+            text-align: left;
+        }
+        .repuestos-table th {
+            background-color: #f2f2f2;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px dashed #ccc;
+            text-align: center;
+            font-size: 10px;
+        }
+        .firma {
+            margin-top: 30px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .firma-linea {
+            text-align: center;
+            width: 45%;
+        }
+        .firma-linea hr {
+            margin-top: 30px;
+            width: 100%;
+        }
+        @media print {
+            body { padding: 0; margin: 0; }
+            .no-print { display: none; }
+            button { display: none; }
+            .orden-container {
+                box-shadow: none;
+                border: none;
+                padding: 0;
+            }
+        }
+        button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        button:hover { background: #0056b3; }
+        .btn-cerrar {
+            background: #6c757d;
+            margin-left: 10px;
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+<div class="orden-container">
+    <!-- HEADER -->
+    <div class="header-top">
+        <div class="logo-area">
+            <div class="logo-enacal">
+                <img src="/img/Logo_ENACAL_2.png" alt="Logo ENACAL">
+            </div>
+        </div>
+        <div class="taller-icon">
+            <i class="fa-solid fa-screwdriver-wrench"></i>
+            <p>TALLER DE SOPORTE TÉCNICO</p>
+        </div>
+    </div>
+    
+    <div class="header">
+        <h2>ORDEN DE TRABAJO / REPARACIÓN</h2>
+        <p><strong>No. Orden:</strong> <%= orden.numero_orden %></p>
+    </div>
+    
+    <div class="folio">
+        <strong>FECHA APERTURA:</strong> <%= new Date(orden.fecha_apertura).toLocaleString() %> |
+        <strong>FECHA CIERRE:</strong> <%= orden.fecha_cierre ? new Date(orden.fecha_cierre).toLocaleString() : 'Pendiente' %>
+    </div>
+
+    <!-- 🔥 DATOS DEL EQUIPO Y USUARIO EN DOS COLUMNAS -->
+    <div class="row-2col">
+        <!-- Columna Izquierda: Datos del Equipo -->
+        <div class="col-half">
+            <div class="info-section">
+                <h5><i class="fa-solid fa-laptop"></i> DATOS DEL EQUIPO</h5>
+                <div class="info-row"><span class="label">Código Informático:</span> <%= orden.codigo_informatico || 'N/A' %></div>
+                <div class="info-row"><span class="label">Tipo de Equipo:</span> <%= orden.tipo_equipo || 'N/A' %></div>
+                <div class="info-row"><span class="label">Marca/Modelo:</span> <%= orden.marca_modelo || 'N/A' %></div>
+                <div class="info-row"><span class="label">Serie:</span> <%= orden.serie || 'N/A' %></div>
+                <div class="info-row"><span class="label">Código Inventario:</span> <%= orden.codigo_inventario || 'N/A' %></div>
+            </div>
+        </div>
+
+        <!-- Columna Derecha: Datos del Usuario -->
+        <div class="col-half">
+            <div class="info-section">
+                <h5><i class="fa-solid fa-user"></i> DATOS DEL USUARIO</h5>
+                <div class="info-row"><span class="label">Nombre:</span> <%= orden.colaborador_nombre || 'No asignado' %></div>
+                <div class="info-row"><span class="label">Cargo:</span> <%= orden.cargo || 'N/A' %></div>
+                <div class="info-row"><span class="label">Ubicación:</span> <%= orden.nombre_dependencia || 'N/A' %></div>
+                <div class="info-row"><span class="label">Ext. Telefónica:</span> <%= orden.extension_telefonica || 'N/A' %></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Información de Recepción (falla reportada) -->
+    <div class="info-section">
+        <h5><i class="fa-solid fa-clipboard"></i> INFORMACIÓN DE RECEPCIÓN</h5>
+        <div class="info-row"><span class="label">Fecha Ingreso:</span> <%= orden.fecha_ingreso ? new Date(orden.fecha_ingreso).toLocaleString() : 'N/A' %></div>
+        <div class="info-row"><span class="label">Quién Entrega:</span> <%= orden.quien_entrega || 'N/A' %></div>
+        <div class="info-row"><span class="label">Accesorios:</span> <%= orden.accesorios || 'Ninguno' %></div>
+        <div class="info-row"><span class="label">Falla Reportada:</span> <%= orden.falla_reportada || 'N/A' %></div>
+    </div>
+
+    <!-- 🔥 Trabajo Realizado / Solución (con más espacio) -->
+    <div class="trabajo-realizado">
+        <strong><i class="fa-solid fa-wrench"></i> TRABAJO REALIZADO / SOLUCIÓN:</strong>
+        <p style="margin-top: 10px; min-height: 120px; white-space: pre-wrap;"><%= orden.trabajo_realizado || 'No registrado' %></p>
+    </div>
+
+    <!-- Repuestos Utilizados -->
+    <% if (repuestosUsados && repuestosUsados.length > 0) { %>
+    <div class="info-section">
+        <h5><i class="fa-solid fa-boxes"></i> REPUESTOS UTILIZADOS</h5>
+        <table class="repuestos-table">
+            <thead>
+                <tr><th>Descripción</th><th>Cantidad</th></tr>
+            </thead>
+            <tbody>
+                <% repuestosUsados.forEach(r => { %>
+                <tr>
+                    <td><%= r.nombre %> - <%= r.descripcion %></td>
+                    <td style="text-align: center;"><%= r.cantidad_usada %></td>
+                </tr>
+                <% }) %>
+            </tbody>
+        </table>
+    </div>
+    <% } else { %>
+    <div class="info-section">
+        <h5><i class="fa-solid fa-boxes"></i> REPUESTOS UTILIZADOS</h5>
+        <p class="text-muted">No se utilizaron repuestos en esta reparación.</p>
+    </div>
+    <% } %>
+
+    <!-- Firmas -->
+    <div class="firma">
+        <div class="firma-linea">
+            <hr>
+            <p><strong>Firma del Técnico</strong></p>
+            <p><%= orden.tecnico_nombre || 'Técnico asignado' %></p>
+        </div>
+        <div class="firma-linea">
+            <hr>
+            <p><strong>Firma del Usuario</strong></p>
+            <p>Vo.Bo. Conformidad de reparación</p>
+        </div>
+    </div>
+    
+    <div class="footer">
+        <p>Este documento es un comprobante de la reparación realizada.</p>
+    </div>
+</div>
+
+<div style="text-align: center; margin-top: 20px;" class="no-print">
+    <button onclick="window.print()"><i class="fa-solid fa-print"></i> Imprimir / Guardar PDF</button>
+    <button class="btn-cerrar" onclick="window.close()"><i class="fa-solid fa-times"></i> Cerrar</button>
+</div>
+</body>
+</html>

@@ -242,7 +242,12 @@
                                         <a href="/taller/reparacion/<%= ing.id_recepcion %>/repuestos" class="btn btn-sm btn-primary btn-accion" title="Reparar">
                                             <i class="fa-solid fa-tools"></i>
                                         </a>
-                                        <button class="btn btn-sm btn-success btn-accion btn-entregar" title="Entregar" data-id="<%= ing.id_recepcion %>">
+                                        <button class="btn btn-sm btn-success btn-accion btn-entregar" 
+                                                title="Entregar" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#modalEntregar" 
+                                                data-id="<%= ing.id_recepcion %>" 
+                                                data-equipo="<%= ing.codigo_informatico %>">
                                             <i class="fa-solid fa-check-circle"></i>
                                         </button>
                                     </td>
@@ -371,6 +376,92 @@
     });
 
 
+</script>
+
+<!-- MODAL DE ENTREGA DE EQUIPO -->
+<div class="modal fade" id="modalEntregar" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content" style="border-radius: 20px;">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    <i class="fa-solid fa-handshake me-2"></i>Entrega de Equipo
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="/taller/recepcion/entregar" method="POST" id="formEntrega">
+                <div class="modal-body">
+                    <input type="hidden" name="id_recepcion" id="entrega_id_recepcion">
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Equipo</label>
+                            <input type="text" id="entrega_equipo" class="form-control" readonly disabled>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Fecha de Entrega</label>
+                            <input type="datetime-local" name="fecha_entrega" class="form-control" value="<%= new Date().toISOString().slice(0,16) %>" required>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Técnico que Entrega</label>
+                            <input type="text" name="tecnico_entrega" class="form-control" value="<%= nombre %>" readonly required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Persona que Retira</label>
+                            <input type="text" name="persona_retira" class="form-control" placeholder="Nombre completo" required>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Cédula / Documento</label>
+                            <input type="text" name="documento_retira" class="form-control" placeholder="Número de cédula o documento">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Teléfono</label>
+                            <input type="text" name="telefono_retira" class="form-control" placeholder="Número de contacto">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Observaciones de Entrega</label>
+                        <textarea name="observaciones_entrega" class="form-control" rows="2" placeholder="Estado del equipo al momento de entrega, observaciones adicionales..."></textarea>
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <input type="checkbox" class="form-check-input" id="imprimir_seguridad" name="imprimir_seguridad" value="1">
+                        <label class="form-check-label" for="imprimir_seguridad">
+                            <i class="fa-solid fa-shield-alt me-1"></i> Imprimir copia para Seguridad
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary rounded-pill" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success rounded-pill">
+                        <i class="fa-solid fa-check-circle me-2"></i>Confirmar Entrega
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Pasar datos al modal
+    document.querySelectorAll('.btn-entregar').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const id = this.getAttribute('data-id');
+            const equipo = this.getAttribute('data-equipo');
+        
+            console.log("ID Recepción:", id);  // Depuración
+            console.log("Equipo:", equipo);    // Depuración
+        
+           document.getElementById('entrega_id_recepcion').value = id;
+           document.getElementById('entrega_equipo').value = equipo;
+        });
+    });
 </script>
 
 <%- include('partials/footer') %>

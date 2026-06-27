@@ -1,0 +1,237 @@
+<%- include('partials/header') %>
+<%- include('partials/sidebar') %>
+
+<style>
+    .info-card { background-color: #f8f9fa; border-radius: 12px; padding: 15px; margin-bottom: 20px; }
+    .info-label { font-size: 0.7rem; text-transform: uppercase; color: #6c757d; font-weight: 600; }
+    .info-value { font-size: 0.9rem; font-weight: 500; margin-bottom: 0; }
+    .repuesto-item { background: white; border-radius: 10px; padding: 10px; margin-bottom: 10px; border-left: 4px solid #0d6efd; }
+</style>
+
+<div class="main-content">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="m-0 text-secondary fw-bold">
+                <i class="fa-solid fa-wrench me-2 text-primary"></i>Atender Orden #<%= orden.numero_orden %>
+            </h4>
+            <p class="text-muted small mb-0">
+                <i class="fa-solid fa-laptop me-1"></i> <%= orden.codigo_informatico || 'Mantenimiento' %>
+            </p>
+        </div>
+        <a href="/ordenes/taller" class="btn btn-secondary rounded-pill px-4">
+            <i class="fa-solid fa-arrow-left me-2"></i>Volver
+        </a>
+    </div>
+
+    <div class="row">
+        <!-- Columna Izquierda: Información de la orden -->
+        <div class="col-lg-6">
+            <!-- Información del equipo -->
+            <div class="info-card">
+                <h6 class="fw-bold mb-3"><i class="fa-solid fa-laptop me-2 text-primary"></i>Información del Equipo</h6>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="info-label">Código Informático</div>
+                        <p class="info-value"><%= orden.codigo_informatico || 'N/A' %></p>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="info-label">Marca/Modelo</div>
+                        <p class="info-value"><%= orden.marca_modelo || 'N/A' %></p>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="info-label">Serie</div>
+                        <p class="info-value"><%= orden.serie || 'N/A' %></p>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="info-label">Tipo</div>
+                        <p class="info-value"><%= orden.tipo_equipo || 'N/A' %></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Información del colaborador -->
+            <div class="info-card">
+                <h6 class="fw-bold mb-3"><i class="fa-solid fa-user me-2 text-primary"></i>Información del Responsable</h6>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="info-label">Colaborador</div>
+                        <p class="info-value"><%= orden.colaborador_nombre || 'No asignado' %></p>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="info-label">Cargo</div>
+                        <p class="info-value"><%= orden.cargo || 'N/A' %></p>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="info-label">Ubicación</div>
+                        <p class="info-value"><%= orden.nombre_dependencia || 'N/A' %></p>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="info-label">Ext. Telefónica</div>
+                        <p class="info-value"><%= orden.extension_telefonica || 'N/A' %></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Información de recepción (solo para órdenes de taller) -->
+            <% if (orden.tipo_orden === 'taller') { %>
+            <div class="info-card">
+                <h6 class="fw-bold mb-3"><i class="fa-solid fa-clipboard me-2 text-warning"></i>Información de Recepción</h6>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="info-label">Fecha Ingreso</div>
+                        <p class="info-value"><%= new Date(orden.fecha_ingreso).toLocaleString() %></p>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="info-label">Quién Entrega</div>
+                        <p class="info-value"><%= orden.quien_entrega || 'N/E' %></p>
+                    </div>
+                    <div class="col-12">
+                        <div class="info-label">Falla Reportada</div>
+                        <p class="info-value bg-white p-2 rounded"><%= orden.falla_reportada %></p>
+                    </div>
+                    <div class="col-12">
+                        <div class="info-label">Accesorios</div>
+                        <p class="info-value"><%= orden.accesorios || 'Ninguno' %></p>
+                    </div>
+                </div>
+            </div>
+            <% } %>
+
+            <!-- Equipos adicionales para mantenimiento -->
+            <% if (equiposMantenimiento.length > 0) { %>
+            <div class="info-card">
+                <h6 class="fw-bold mb-3"><i class="fa-solid fa-microchip me-2 text-primary"></i>Equipos en Mantenimiento</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr><th>Código</th><th>Marca/Modelo</th><th>Serie</th></tr>
+                        </thead>
+                        <tbody>
+                            <% equiposMantenimiento.forEach(eq => { %>
+                                <tr><td><%= eq.codigo_informatico %></td><td><%= eq.marca_modelo %></td><td><%= eq.serie || '-' %></td></tr>
+                            <% }) %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <% } %>
+        </div>
+
+        <!-- Columna Derecha: Gestión de repuestos y trabajo -->
+        <div class="col-lg-6">
+            <!-- Agregar repuestos -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white fw-bold">
+                    <i class="fa-solid fa-boxes me-2 text-primary"></i>Agregar Repuestos
+                </div>
+                <div class="card-body">
+                    <form action="/ordenes/<%= orden.id_orden %>/agregar-repuesto" method="POST" class="row g-2">
+                        <div class="col-md-7">
+                            <select name="id_repuesto" class="form-select form-select-sm" required>
+                                <option value="">Seleccione repuesto...</option>
+                                <% repuestosDisponibles.forEach(r => { %>
+                                    <option value="<%= r.id_repuestos %>">
+                                        <%= r.nombre %> - <%= r.marca %> (Stock: <%= r.stock_actual %>)
+                                    </option>
+                                <% }) %>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <input type="number" name="cantidad" class="form-control form-control-sm" placeholder="Cantidad" min="1" value="1" required>
+                        </div>
+                        <div class="col-md-2">
+                            <button type="submit" class="btn btn-sm btn-primary w-100">
+                                <i class="fa-solid fa-plus"></i> Agregar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Lista de repuestos usados -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white fw-bold d-flex justify-content-between">
+                    <span><i class="fa-solid fa-list me-2 text-primary"></i>Repuestos Utilizados</span>
+                    <span class="badge bg-secondary"><%= repuestosUsados.length %> items</span>
+                </div>
+                <div class="card-body p-2">
+                    <% if (repuestosUsados.length > 0) { %>
+                        <% repuestosUsados.forEach(r => { %>
+                            <div class="repuesto-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong><%= r.nombre %></strong>
+                                    <small class="text-muted d-block"><%= r.marca %></small>
+                                </div>
+                                <div class="text-end">
+                                    <span class="badge bg-primary rounded-pill">x<%= r.cantidad_usada %></span>
+                                    <form action="/ordenes/<%= orden.id_orden %>/eliminar-repuesto/<%= r.id_orden_repuesto %>" method="POST" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger ms-2" onclick="return confirm('¿Eliminar este repuesto?')">
+                                            <i class="fa-solid fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        <% }) %>
+                    <% } else { %>
+                        <p class="text-muted text-center py-3 mb-0">No se han agregado repuestos</p>
+                    <% } %>
+                </div>
+            </div>
+
+            <!-- Registrar trabajo y cambiar estado -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white fw-bold">
+                    <i class="fa-solid fa-check-circle me-2 text-success"></i>Finalizar Orden
+                </div>
+                <div class="card-body">
+                    <form action="/ordenes/<%= orden.id_orden %>/actualizar-estado" method="POST">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Estado de la Orden</label>
+                            <select name="estado" class="form-select" <%= orden.estado === 'Completado' ? 'disabled' : '' %>>
+                                <option value="En Proceso" <%= orden.estado === 'En Proceso' ? 'selected' : '' %>>En Proceso</option>
+                                <option value="Completado" <%= orden.estado === 'Completado' ? 'selected' : '' %>>Completado</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Trabajo Realizado / Solución</label>
+                            <textarea name="trabajo_realizado" class="form-control" rows="4" 
+                                placeholder="Describa el trabajo realizado, solución aplicada, observaciones..."><%= orden.trabajo_realizado || '' %></textarea>
+                        </div>
+                        
+                        <% if (repuestosUsados.length > 0 && orden.estado !== 'Completado') { %>
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" name="descontar_repuestos" class="form-check-input" id="descontar" checked>
+                            <label class="form-check-label" for="descontar">
+                                <i class="fa-solid fa-arrow-down me-1 text-danger"></i> Descontar repuestos del inventario al completar
+                            </label>
+                        </div>
+                        <% } %>
+                        
+                        <div class="text-end">
+                            <button type="submit" class="btn btn-success rounded-pill px-4">
+                                <i class="fa-solid fa-save me-2"></i> Guardar Cambios
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 🔥 NUEVO: Botón de impresión (solo cuando la orden está Completada) -->
+            <% if (orden.estado === 'Completado') { %>
+            <div class="mt-3">
+                <div class="alert alert-info text-center">
+                    <i class="fa-solid fa-info-circle me-2"></i> Esta orden ya está completada.
+                </div>
+                <div class="text-center">
+                    <a href="/ordenes/<%= orden.id_orden %>/imprimir" target="_blank" class="btn btn-secondary rounded-pill px-4">
+                        <i class="fa-solid fa-print me-2"></i>Imprimir Comprobante de Reparación
+                    </a>
+                </div>
+            </div>
+            <% } %>
+        </div>
+    </div>
+</div>
+
+<%- include('partials/footer') %>
