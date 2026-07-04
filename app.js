@@ -833,13 +833,14 @@ app.get('/ordenes/fuera/nueva', async (req, res) => {
         
         const [tecnicos] = await db.query(`SELECT id_usuarios, nombre FROM usuarios ORDER BY nombre`);
         
+        const tipo = req.query.tipo || 'fuera_taller';
         res.render('orden_fuera_nueva', {
             nombre: req.session.nombreReal,
             rol: req.session.rol,
             equipos: equipos,
             tecnicos: tecnicos,
-            tipo: req.query.tipo || 'fuera_taller', // fuera_taller o remota
-            pagina: 'ordenes_fuera'
+            tipo: tipo, // fuera_taller o remota
+            pagina: tipo === 'remota' ? 'ordenes_remota' : 'ordenes_fuera'
         });
     } catch (error) {
         console.error(error);
@@ -870,7 +871,7 @@ app.post('/ordenes/fuera/guardar', async (req, res) => {
             INSERT INTO ordenes_trabajo 
             (numero_orden, tipo_orden, id_equipo, id_colaborador, tecnico_asignado, 
              fecha_apertura, trabajo_realizado, observaciones, estado, id_usuario_registro) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Completado', ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Pendiente', ?)
         `, [
             numero_orden, tipo_orden, id_equipo, equipo[0]?.id_colaborador,
             tecnico_asignado, fecha_apertura, trabajo_realizado, observaciones, req.session.id_usuario
@@ -882,6 +883,138 @@ app.post('/ordenes/fuera/guardar', async (req, res) => {
         console.error(error);
         req.flash('error', 'Error al registrar la orden');
         res.redirect(`/ordenes/${req.body.tipo_orden}/nueva`);
+    }
+});
+
+// Listado de órdenes fuera del taller
+app.get('/ordenes/fuera', async (req, res) => {
+    if (!req.session.loggedin) return res.redirect('/');
+
+    try {
+        const [ordenes] = await db.query(`
+            SELECT ot.*, e.codigo_informatico, e.marca_modelo, u.nombre AS tecnico_nombre
+            FROM ordenes_trabajo ot
+            LEFT JOIN equipos e ON ot.id_equipo = e.id_equipo
+            LEFT JOIN usuarios u ON ot.tecnico_asignado = u.id_usuarios
+            WHERE ot.tipo_orden = 'fuera_taller' AND ot.tecnico_asignado = ?
+            ORDER BY ot.fecha_apertura DESC
+        `, [req.session.id_usuario]);
+
+        const pendientes = ordenes.filter(o => o.estado === 'Pendiente').length;
+        const enProceso = ordenes.filter(o => o.estado === 'En Proceso').length;
+        const completadas = ordenes.filter(o => o.estado === 'Completado').length;
+
+        res.render('ordenes_fuera_remota', {
+            nombre: req.session.nombreReal,
+            rol: req.session.rol,
+            ordenes,
+            tipo: 'fuera_taller',
+            pagina: 'ordenes_fuera',
+            pendientes,
+            enProceso,
+            completadas
+        });
+    } catch (error) {
+        console.error(error);
+        req.flash('error', 'Error al cargar órdenes fuera del taller');
+        res.redirect('/dashboard');
+    }
+});
+
+// Listado de órdenes remotas
+app.get('/ordenes/remota', async (req, res) => {
+    if (!req.session.loggedin) return res.redirect('/');
+
+    try {
+        const [ordenes] = await db.query(`
+            SELECT ot.*, e.codigo_informatico, e.marca_modelo, u.nombre AS tecnico_nombre
+            FROM ordenes_trabajo ot
+            LEFT JOIN equipos e ON ot.id_equipo = e.id_equipo
+            LEFT JOIN usuarios u ON ot.tecnico_asignado = u.id_usuarios
+            WHERE ot.tipo_orden = 'remota' AND ot.tecnico_asignado = ?
+            ORDER BY ot.fecha_apertura DESC
+        `, [req.session.id_usuario]);
+
+        const pendientes = ordenes.filter(o => o.estado === 'Pendiente').length;
+        const enProceso = ordenes.filter(o => o.estado === 'En Proceso').length;
+        const completadas = ordenes.filter(o => o.estado === 'Completado').length;
+
+        res.render('ordenes_fuera_remota', {
+            nombre: req.session.nombreReal,
+            rol: req.session.rol,
+            ordenes,
+            tipo: 'remota',
+            pagina: 'ordenes_remota',
+            pendientes,
+            enProceso,
+            completadas
+        });
+    } catch (error) {
+        console.error(error);
+        req.flash('error', 'Error al cargar órdenes remotas');
+        res.redirect('/dashboard');
+    }
+});
+
+// Listado de órdenes de mantenimiento
+app.get('/ordenes/mantenimiento', async (req, res) => {
+    if (!req.session.loggedin) return res.redirect('/');
+
+    try {
+        const [ordenes] = await db.query(`
+            SELECT ot.*, e.codigo_informatico, e.marca_modelo, u.nombre AS tecnico_nombre
+            FROM ordenes_trabajo ot
+            LEFT JOIN equipos e ON ot.id_equipo = e.id_equipo
+            LEFT JOIN usuarios u ON ot.tecnico_asignado = u.id_usuarios
+            WHERE ot.tipo_orden = 'mantenimiento' AND ot.tecnico_asignado = ?
+            ORDER BY ot.fecha_apertura DESC
+        `, [req.session.id_usuario]);
+
+        const pendientes = ordenes.filter(o => o.estado === 'Pendiente').length;
+        const enProceso = ordenes.filter(o => o.estado === 'En Proceso').length;
+        const completadas = ordenes.filter(o => o.estado === 'Completado').length;
+
+        res.render('ordenes_fuera_remota', {
+            nombre: req.session.nombreReal,
+            rol: req.session.rol,
+            ordenes,
+            tipo: 'mantenimiento',
+            pagina: 'ordenes_mantenimiento',
+            pendientes,
+            enProceso,
+            completadas
+        });
+    } catch (error) {
+        console.error(error);
+        req.flash('error', 'Error al cargar órdenes de mantenimiento');
+        res.redirect('/dashboard');
+    }
+});
+
+// Historial de órdenes del técnico
+app.get('/ordenes/historial', async (req, res) => {
+    if (!req.session.loggedin) return res.redirect('/');
+
+    try {
+        const [ordenes] = await db.query(`
+            SELECT ot.*, e.codigo_informatico, e.marca_modelo, u.nombre AS tecnico_nombre
+            FROM ordenes_trabajo ot
+            LEFT JOIN equipos e ON ot.id_equipo = e.id_equipo
+            LEFT JOIN usuarios u ON ot.tecnico_asignado = u.id_usuarios
+            WHERE ot.tecnico_asignado = ? AND ot.estado = 'Completado'
+            ORDER BY ot.fecha_cierre DESC
+        `, [req.session.id_usuario]);
+
+        res.render('ordenes_historial', {
+            nombre: req.session.nombreReal,
+            rol: req.session.rol,
+            ordenes,
+            pagina: 'ordenes_historial'
+        });
+    } catch (error) {
+        console.error(error);
+        req.flash('error', 'Error al cargar historial de órdenes');
+        res.redirect('/dashboard');
     }
 });
 
