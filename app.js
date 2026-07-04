@@ -508,7 +508,7 @@ app.get('/ordenes/:id', async (req, res) => {
     const { id } = req.params;
     
     try {
-        // 🔥 NUEVO: Si la orden está Pendiente, cambiarla a En Proceso automáticamente
+        //  NUEVO: Si la orden está Pendiente, cambiarla a En Proceso automáticamente
         const [estadoActual] = await db.query(`
             SELECT estado FROM ordenes_trabajo 
             WHERE id_orden = ? AND tecnico_asignado = ?
@@ -1378,7 +1378,6 @@ app.post('/inventario/equipos/actualizar', async (req, res) => {
 });
 
 
-// Ruta para obtener especificaciones de un equipo (API)
 // API para obtener especificaciones de un equipo
 app.get('/api/equipo/:id/especificaciones', async (req, res) => {
     if (!req.session.loggedin) return res.status(401).json({ error: 'No autorizado' });
@@ -1501,7 +1500,7 @@ app.post('/configuracion/colaboradores/guardar', restringirA([1]), async (req, r
 });
 
 
-// API para obtener los datos de un solo colaborador (usada por el Modal)
+// API para obtener los datos de un solo colaborador 
 app.get('/api/colaborador/:id', restringirA([1]), async (req, res) => {
     try {
 

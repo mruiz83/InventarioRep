@@ -349,16 +349,7 @@
     // ============================================
     // 4. ENTREGAR EQUIPO
     // ============================================
-    document.addEventListener('click', function(e) {
-        const btn = e.target.closest('.btn-entregar');
-        if (btn) {
-            e.preventDefault();
-            const id = btn.getAttribute('data-id');
-            if (id && confirm('¿Marcar este equipo como ENTREGADO?')) {
-                window.location.href = '/taller/recepcion/entregar/' + id;
-            }
-        }
-    });
+    // El botón de entrega usa el modal y el formulario POST en lugar de una ruta GET.
 
     // 5. IMPRIMIR ORDEN DE SERVICIO
     // ============================================
